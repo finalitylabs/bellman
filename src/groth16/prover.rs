@@ -216,7 +216,7 @@ where
     }
 
     let a = {
-        let mut fft_kern = LockedKernel::new(|| create_fft_kernel(log_d));
+        let mut fft_kern = LockedKernel::new(|| create_fft_kernel::<E>(log_d));
 
         let mut a = EvaluationDomain::from_coeffs(prover.a)?;
         let mut b = EvaluationDomain::from_coeffs(prover.b)?;
@@ -242,7 +242,7 @@ where
         Arc::new(a.into_iter().map(|s| s.0.into_repr()).collect::<Vec<_>>())
     };
 
-    let mut multiexp_kern = LockedKernel::new(|| create_multiexp_kernel());
+    let mut multiexp_kern = LockedKernel::new(|| create_multiexp_kernel::<E>());
 
     let h = multiexp(
         &worker,
