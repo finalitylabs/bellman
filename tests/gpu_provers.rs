@@ -52,7 +52,6 @@ pub fn test_parallel_prover() {
         groth16::{
             create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
         },
-        Circuit, ConstraintSystem, SynthesisError,
     };
     use log::info;
     use paired::bls12_381::Bls12;
