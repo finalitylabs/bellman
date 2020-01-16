@@ -64,3 +64,16 @@ where
         });
     }
 }
+
+pub struct LockedKernel<K> {
+    kernel: Option<K>,
+}
+
+impl<K> LockedKernel<K> {
+    pub fn new<F>(_: F) -> LockedKernel<K> {
+        LockedKernel { kernel: None }
+    }
+    pub fn get(&mut self) -> &mut Option<K> {
+        &mut self.kernel
+    }
+}

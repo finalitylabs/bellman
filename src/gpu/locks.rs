@@ -1,5 +1,5 @@
 use fs2::FileExt;
-use log::info;
+use log::{info, warn};
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -56,5 +56,39 @@ impl Drop for PriorityLock {
     fn drop(&mut self) {
         IS_ME.with(|f| *f.borrow_mut() = false);
         info!("Priority lock released!");
+    }
+}
+
+pub struct LockedKernel<K, F>
+where
+    F: Fn() -> Option<K>,
+{
+    _f: F,
+    kernel: Option<K>,
+}
+
+impl<K, F> LockedKernel<K, F>
+where
+    F: Fn() -> Option<K>,
+{
+    pub fn new(f: F) -> LockedKernel<K, F> {
+        LockedKernel::<K, F> {
+            _f: f,
+            kernel: None,
+        }
+    }
+    pub fn get(&mut self) -> &mut Option<K> {
+        #[cfg(feature = "gpu")]
+        {
+            if !PriorityLock::can_lock() {
+                if let Some(_kernel) = self.kernel.take() {
+                    warn!("GPU acquired by a high priority process! Freeing up kernels...");
+                }
+            } else if self.kernel.is_none() {
+                info!("GPU is available!");
+                self.kernel = (self._f)();
+            }
+        }
+        &mut self.kernel
     }
 }
