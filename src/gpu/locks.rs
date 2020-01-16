@@ -78,16 +78,13 @@ where
         }
     }
     pub fn get(&mut self) -> &mut Option<K> {
-        #[cfg(feature = "gpu")]
-        {
-            if !PriorityLock::can_lock() {
-                if let Some(_kernel) = self.kernel.take() {
-                    warn!("GPU acquired by a high priority process! Freeing up kernels...");
-                }
-            } else if self.kernel.is_none() {
-                info!("GPU is available!");
-                self.kernel = (self._f)();
+        if !PriorityLock::can_lock() {
+            if let Some(_kernel) = self.kernel.take() {
+                warn!("GPU acquired by a high priority process! Freeing up kernels...");
             }
+        } else if self.kernel.is_none() {
+            info!("GPU is available!");
+            self.kernel = (self._f)();
         }
         &mut self.kernel
     }
