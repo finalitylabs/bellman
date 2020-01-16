@@ -3,20 +3,9 @@ extern crate ff;
 extern crate log;
 extern crate paired;
 extern crate rand;
-
-use bellperson::{
-    gpu::PriorityLock,
-    groth16::{
-        create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
-    },
-    Circuit, ConstraintSystem, SynthesisError,
-};
+use bellperson::{Circuit, ConstraintSystem, SynthesisError};
 use ff::{Field, PrimeField};
-use log::info;
-use paired::{bls12_381::Bls12, Engine};
-use rand::thread_rng;
-use std::thread;
-use std::time::Duration;
+use paired::Engine;
 
 #[derive(Clone)]
 pub struct DummyDemo<E: Engine> {
@@ -58,6 +47,19 @@ impl<E: Engine> Circuit<E> for DummyDemo<E> {
 #[cfg(feature = "gpu-test")]
 #[test]
 pub fn test_parallel_prover() {
+    use bellperson::{
+        gpu::PriorityLock,
+        groth16::{
+            create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
+        },
+        Circuit, ConstraintSystem, SynthesisError,
+    };
+    use log::info;
+    use paired::bls12_381::Bls12;
+    use rand::thread_rng;
+    use std::thread;
+    use std::time::Duration;
+
     env_logger::init();
     let rng = &mut thread_rng();
 
