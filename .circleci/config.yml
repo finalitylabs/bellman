@@ -14,7 +14,7 @@ restore-workspace: &restore-workspace
 restore-cache: &restore-cache
   restore_cache:
     keys:
-      - cargo-v0-{{ checksum "rust-toolchain" }}-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-{{ arch }}
+      - cargo-v1-{{ checksum "rust-toolchain" }}-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-{{ arch }}
       - repo-source-{{ .Branch }}-{{ .Revision }}
 
 commands:
@@ -33,10 +33,6 @@ commands:
           name: Test (GPU) (<< parameters.target >>)
           command: TARGET=<< parameters.target >> cargo test --features gpu
           no_output_timeout: 15m
-      - run:
-          name: Build GPU (<< parameters.target >>)
-          command: TARGET=<< parameters.target >> cargo build --features gpu-test
-          no_output_timeout: 15m
 
 jobs:
   cargo_fetch:
@@ -51,7 +47,7 @@ jobs:
           command: cargo generate-lockfile
       - restore_cache:
           keys:
-            - cargo-v0-{{ checksum "rust-toolchain" }}-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-{{ arch }}
+            - cargo-v1-{{ checksum "rust-toolchain" }}-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-{{ arch }}
       - run: cargo update
       - run: cargo fetch
       - run: rustup install $(cat rust-toolchain)
@@ -65,7 +61,7 @@ jobs:
           paths:
             - crate
       - save_cache:
-          key: cargo-v0-{{ checksum "rust-toolchain" }}-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-{{ arch }}
+          key: cargo-v1-{{ checksum "rust-toolchain" }}-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-{{ arch }}
           paths:
             - "~/.cargo"
             - "~/.rustup"
@@ -95,7 +91,9 @@ jobs:
           command: cargo clippy --all-features
 
   build:
-    executor: default
+    machine:
+      resource_class: gpu.nvidia.medium
+      image: ubuntu-1604-cuda-10.1:201909-23
     steps:
       - *restore-workspace
       - *restore-cache
