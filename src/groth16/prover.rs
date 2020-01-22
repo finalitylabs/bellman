@@ -9,7 +9,7 @@ use paired::Engine;
 
 use super::{ParameterSource, Proof};
 use crate::domain::{create_fft_kernel, EvaluationDomain, Scalar};
-use crate::gpu::LockedKernel;
+use crate::gpu::{LockedKernel, PriorityLock};
 use crate::multicore::Worker;
 use crate::multiexp::{create_multiexp_kernel, multiexp, DensityTracker, FullDensity};
 use crate::{
@@ -158,10 +158,11 @@ impl<E: Engine> ConstraintSystem<E> for ProvingAssignment<E> {
     }
 }
 
-pub fn create_random_proof<E, C, R, P: ParameterSource<E>>(
+pub fn create_random_proof_priority<E, C, R, P: ParameterSource<E>>(
     circuit: C,
     params: P,
     rng: &mut R,
+    priority: bool,
 ) -> Result<Proof<E>, SynthesisError>
 where
     E: Engine,
@@ -171,20 +172,23 @@ where
     let r = E::Fr::random(rng);
     let s = E::Fr::random(rng);
 
-    create_proof::<E, C, P>(circuit, params, r, s)
+    create_proof_priority::<E, C, P>(circuit, params, r, s, priority)
 }
 
-pub fn create_proof<E, C, P: ParameterSource<E>>(
+pub fn create_proof_priority<E, C, P: ParameterSource<E>>(
     circuit: C,
     mut params: P,
     r: E::Fr,
     s: E::Fr,
+    priority: bool,
 ) -> Result<Proof<E>, SynthesisError>
 where
     E: Engine,
     C: Circuit<E>,
 {
     info!("Bellperson {} is being used!", BELLMAN_VERSION);
+
+    let _prio_lock = PriorityLock::lock_if_priority(priority);
 
     let mut prover = ProvingAssignment {
         a_aux_density: DensityTracker::new(),
@@ -216,7 +220,7 @@ where
     }
 
     let a = {
-        let mut fft_kern = LockedKernel::new(|| create_fft_kernel::<E>(log_d));
+        let mut fft_kern = LockedKernel::new(|| create_fft_kernel::<E>(log_d), priority);
 
         let mut a = EvaluationDomain::from_coeffs(prover.a)?;
         let mut b = EvaluationDomain::from_coeffs(prover.b)?;
@@ -242,7 +246,7 @@ where
         Arc::new(a.into_iter().map(|s| s.0.into_repr()).collect::<Vec<_>>())
     };
 
-    let mut multiexp_kern = LockedKernel::new(|| create_multiexp_kernel::<E>());
+    let mut multiexp_kern = LockedKernel::new(|| create_multiexp_kernel::<E>(), priority);
 
     let h = multiexp(
         &worker,
@@ -381,4 +385,30 @@ where
         b: g_b.into_affine(),
         c: g_c.into_affine(),
     })
+}
+
+pub fn create_proof<E, C, P: ParameterSource<E>>(
+    circuit: C,
+    params: P,
+    r: E::Fr,
+    s: E::Fr,
+) -> Result<Proof<E>, SynthesisError>
+where
+    E: Engine,
+    C: Circuit<E>,
+{
+    create_proof_priority::<E, C, P>(circuit, params, r, s, false)
+}
+
+pub fn create_random_proof<E, C, R, P: ParameterSource<E>>(
+    circuit: C,
+    params: P,
+    rng: &mut R,
+) -> Result<Proof<E>, SynthesisError>
+where
+    E: Engine,
+    C: Circuit<E>,
+    R: RngCore,
+{
+    create_random_proof_priority::<E, C, R, P>(circuit, params, rng, false)
 }

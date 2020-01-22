@@ -28,33 +28,29 @@ impl Drop for GPULock {
     }
 }
 
-use std::cell::RefCell;
-thread_local!(static IS_ME: RefCell<bool> = RefCell::new(false));
-
 #[derive(Debug)]
 pub struct PriorityLock(File);
 impl PriorityLock {
-    pub fn lock() -> PriorityLock {
-        info!("Acquiring priority lock...");
-        let f = File::create(tmp_path(PRIORITY_LOCK_NAME)).unwrap();
-        f.lock_exclusive().unwrap();
-        IS_ME.with(|f| *f.borrow_mut() = true);
-        info!("Priority lock acquired!");
-        PriorityLock(f)
+    pub fn lock_if_priority(priority: bool) -> Option<PriorityLock> {
+        if priority {
+            info!("Acquiring priority lock...");
+            let f = File::create(tmp_path(PRIORITY_LOCK_NAME)).unwrap();
+            f.lock_exclusive().unwrap();
+            info!("Priority lock acquired!");
+            Some(PriorityLock(f))
+        } else {
+            None
+        }
     }
-    pub fn can_lock() -> bool {
-        // Either taken by me or not taken by somebody else
-        let is_me = IS_ME.with(|f| *f.borrow());
-        is_me
-            || File::create(tmp_path(PRIORITY_LOCK_NAME))
-                .unwrap()
-                .try_lock_exclusive()
-                .is_ok()
+    pub fn is_locked() -> bool {
+        File::create(tmp_path(PRIORITY_LOCK_NAME))
+            .unwrap()
+            .try_lock_exclusive()
+            .is_err()
     }
 }
 impl Drop for PriorityLock {
     fn drop(&mut self) {
-        IS_ME.with(|f| *f.borrow_mut() = false);
         info!("Priority lock released!");
     }
 }
@@ -63,6 +59,7 @@ pub struct LockedKernel<K, F>
 where
     F: Fn() -> Option<K>,
 {
+    priority: bool,
     _f: F,
     kernel: Option<K>,
 }
@@ -71,14 +68,15 @@ impl<K, F> LockedKernel<K, F>
 where
     F: Fn() -> Option<K>,
 {
-    pub fn new(f: F) -> LockedKernel<K, F> {
+    pub fn new(f: F, priority: bool) -> LockedKernel<K, F> {
         LockedKernel::<K, F> {
+            priority,
             _f: f,
             kernel: None,
         }
     }
     pub fn get(&mut self) -> &mut Option<K> {
-        if !PriorityLock::can_lock() {
+        if !self.priority && PriorityLock::is_locked() {
             if let Some(_kernel) = self.kernel.take() {
                 warn!("GPU acquired by a high priority process! Freeing up kernels...");
             }
