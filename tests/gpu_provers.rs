@@ -44,7 +44,7 @@ impl<E: Engine> Circuit<E> for DummyDemo<E> {
     }
 }
 
-#[cfg(feature = "gpu-test")]
+#[cfg(feature = "gpu")]
 #[test]
 pub fn test_parallel_prover() {
     use bellperson::{
