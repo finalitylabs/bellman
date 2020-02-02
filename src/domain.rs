@@ -610,3 +610,40 @@ pub fn gpu_fft_consistency() {
         println!("============================");
     }
 }
+
+#[cfg(feature = "gpu")]
+#[test]
+pub fn gpu_edge_cases() {
+    use paired::bls12_381::{Bls12, Fr};
+
+    let mut kern = gpu::FFTKernel::<Bls12>::create(1 << 24).expect("Cannot initialize kernel!");
+
+    let omega = Fr::from_str(
+        "52435875175126190479447740508185965837690552500527637822603658699938581184512",
+    )
+    .unwrap();
+    let mut elems = [
+        Scalar::<Bls12>(
+            Fr::from_str(
+                "10378147428646748713262790731927047832491838334093540023134997451782711053057",
+            )
+            .unwrap(),
+        ),
+        Scalar::<Bls12>(
+            Fr::from_str(
+                "8162022361378018875504616824795862512587532954079052061263186186536658702708",
+            )
+            .unwrap(),
+        ),
+    ];
+    let mut elems2 = elems.clone();
+
+    //gpu_fft(&mut kern, &mut elems, &omega, 1).expect("GPU FFT failed!");
+    serial_fft(&mut elems, &omega, 1);
+
+    let ee = unsafe { std::mem::transmute::<&mut [Scalar::<Bls12>], &mut [Fr]>(&mut elems) };
+    for v in ee.iter() {
+        println!("{}", v);
+    }
+
+}
