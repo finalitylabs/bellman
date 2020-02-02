@@ -103,6 +103,11 @@ FIELD FIELD_add(FIELD a, FIELD b) {
   return res;
 }
 
+// Modular negation
+FIELD FIELD_neg(FIELD a) {
+  return FIELD_sub_(FIELD_P, a);
+}
+
 // Squaring is a special case of multiplication which can be done ~1.5x faster.
 // https://stackoverflow.com/a/16388571/1348497
 FIELD FIELD_sqr(FIELD a) {

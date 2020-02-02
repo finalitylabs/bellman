@@ -115,3 +115,19 @@ POINT_projective POINT_add(POINT_projective a, POINT_projective b) {
     return a;
   }
 }
+
+POINT_projective POINT_sub(POINT_projective a, POINT_projective b) {
+  if(!FIELD_eq(b.z, FIELD_ZERO))
+    b.y = FIELD_neg(b.y);
+  return POINT_add(a, b);
+}
+
+POINT_projective POINT_mul(POINT_projective a, EXPONENT b) {
+  POINT_projective res = POINT_ZERO;
+  for(uint i = 0; i < EXPONENT_BITS; i++) {
+    if (EXPONENT_get_bit(b, i))
+      res = POINT_add(res, a);
+    b = FIELD_double(b);
+  }
+  return res;
+}
