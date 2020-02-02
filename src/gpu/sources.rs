@@ -125,7 +125,7 @@ where
     E: Engine,
 {
     return String::from(format!(
-        "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+        "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
         DEFS_SRC,
         field::<E::Fr>("Fr"),
         field::<E::Fq>("Fq"),
@@ -134,6 +134,8 @@ where
         ec("Fq", "G1", "Exp"),
         ec("Fq2", "G2", "Exp"),
         fft("Fr", "Fr"),
+        fft("G1", "Fr"),
+        fft("G2", "Fr"),
         multiexp("G1", "Exp"),
         multiexp("G2", "Exp")
     ));
