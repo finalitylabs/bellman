@@ -100,8 +100,10 @@ fn field2(field2: &str, field: &str) -> String {
         .replace("FIELD", field);
 }
 
-fn fft(field: &str) -> String {
-    return String::from(FFT_SRC).replace("FIELD", field);
+fn fft(group: &str, field: &str) -> String {
+    return String::from(FFT_SRC)
+        .replace("GROUP", group)
+        .replace("FIELD", field);
 }
 
 fn ec(field: &str, point: &str, exp: &str) -> String {
@@ -126,7 +128,7 @@ where
         "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
         DEFS_SRC,
         field::<E::Fr>("Fr"),
-        fft("Fr"),
+        fft("Fr", "Fr"),
         exponent::<E::Fr>("Exp"),
         field::<E::Fq>("Fq"),
         ec("Fq", "G1", "Exp"),

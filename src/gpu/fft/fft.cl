@@ -1,11 +1,11 @@
 /*
  * FFT algorithm is inspired from: http://www.bealto.com/gpu-fft_group-1.html
  */
-__kernel void radix_fft(__global FIELD* x, // Source buffer
-                        __global FIELD* y, // Destination buffer
+__kernel void radix_fft(__global GROUP* x, // Source buffer
+                        __global GROUP* y, // Destination buffer
                         __global FIELD* pq, // Precalculated twiddle factors
                         __global FIELD* omegas, // [omega, omega^2, omega^4, ...]
-                        __local FIELD* u, // Local buffer to store intermediary values
+                        __local GROUP* u, // Local buffer to store intermediary values
                         uint n, // Number of elements
                         uint lgp, // Log2 of `p` (Read more in the link above)
                         uint deg, // 1=>radix2, 2=>radix4, 3=>radix8, ...
@@ -44,9 +44,9 @@ __kernel void radix_fft(__global FIELD* x, // Source buffer
       uint i0 = (i << 1) - di;
       uint i1 = i0 + bit;
       tmp = u[i0];
-      u[i0] = FIELD_add(u[i0], u[i1]);
-      u[i1] = FIELD_sub(tmp, u[i1]);
-      if(di != 0) u[i1] = FIELD_mul(pq[di << rnd << pqshift], u[i1]);
+      u[i0] = GROUP_add(u[i0], u[i1]);
+      u[i1] = GROUP_sub(tmp, u[i1]);
+      if(di != 0) u[i1] = GROUP_mul(u[i1], pq[di << rnd << pqshift]);
     }
 
     barrier(CLK_LOCAL_MEM_FENCE);
