@@ -1,12 +1,3 @@
-uint bitreverse(uint n, uint bits) {
-  uint r = 0;
-  for(int i = 0; i < bits; i++) {
-    r = (r << 1) | (n & 1);
-    n >>= 1;
-  }
-  return r;
-}
-
 /*
  * FFT algorithm is inspired from: http://www.bealto.com/gpu-fft_group-1.html
  */

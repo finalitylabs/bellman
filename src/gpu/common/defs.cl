@@ -5,6 +5,15 @@
 typedef ulong limb;
 #define LIMB_BITS (64)
 
+uint bitreverse(uint n, uint bits) {
+  uint r = 0;
+  for(int i = 0; i < bits; i++) {
+    r = (r << 1) | (n & 1);
+    n >>= 1;
+  }
+  return r;
+}
+
 // Returns a * b + c + d, puts the carry in d
 limb mac_with_carry(limb a, limb b, limb c, limb *d) {
   #ifdef NVIDIA
