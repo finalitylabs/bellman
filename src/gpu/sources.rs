@@ -104,10 +104,11 @@ fn fft(field: &str) -> String {
     return String::from(FFT_SRC).replace("FIELD", field);
 }
 
-fn ec(field: &str, point: &str) -> String {
+fn ec(field: &str, point: &str, exp: &str) -> String {
     return String::from(EC_SRC)
         .replace("FIELD", field)
-        .replace("POINT", point);
+        .replace("POINT", point)
+        .replace("EXPONENT", exp);
 }
 
 fn multiexp(point: &str, exp: &str) -> String {
@@ -128,10 +129,10 @@ where
         fft("Fr"),
         exponent::<E::Fr>("Exp"),
         field::<E::Fq>("Fq"),
-        ec("Fq", "G1"),
+        ec("Fq", "G1", "Exp"),
         multiexp("G1", "Exp"),
         field2("Fq2", "Fq"),
-        ec("Fq2", "G2"),
+        ec("Fq2", "G2", "Exp"),
         multiexp("G2", "Exp")
     ));
 }
