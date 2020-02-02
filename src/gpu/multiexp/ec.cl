@@ -14,6 +14,8 @@ typedef struct {
   FIELD z;
 } POINT_projective;
 
+typedef POINT_projective POINT;
+
 // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
 POINT_projective POINT_double(POINT_projective inp) {
   if(FIELD_eq(inp.z, FIELD_ZERO)) return inp;
