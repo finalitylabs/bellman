@@ -10,7 +10,6 @@ static DEFS_SRC: &str = include_str!("common/defs.cl");
 static FIELD_SRC: &str = include_str!("common/field.cl");
 static FFT_SRC: &str = include_str!("fft/fft.cl");
 
-static EXP_SRC: &str = include_str!("multiexp/exp.cl");
 static FIELD2_SRC: &str = include_str!("multiexp/field2.cl");
 static EC_SRC: &str = include_str!("multiexp/ec.cl");
 static MULTIEXP_SRC: &str = include_str!("multiexp/multiexp.cl");
@@ -72,17 +71,6 @@ where
     );
 }
 
-fn exponent<F>(name: &str) -> String
-where
-    F: PrimeField,
-{
-    return format!(
-        "{}\n{}\n",
-        format!("#define {}_LIMBS {}", name, limbs_of(&F::one()).len()),
-        String::from(EXP_SRC).replace("EXPONENT", name)
-    );
-}
-
 fn field<F>(name: &str) -> String
 where
     F: PrimeField,
@@ -125,18 +113,17 @@ where
     E: Engine,
 {
     return String::from(format!(
-        "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+        "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
         DEFS_SRC,
         field::<E::Fr>("Fr"),
         field::<E::Fq>("Fq"),
         field2("Fq2", "Fq"),
-        exponent::<E::Fr>("Exp"),
-        ec("Fq", "G1", "Exp"),
-        ec("Fq2", "G2", "Exp"),
+        ec("Fq", "G1", "Fr"),
+        ec("Fq2", "G2", "Fr"),
         fft("Fr", "Fr"),
         fft("G1", "Fr"),
         fft("G2", "Fr"),
-        multiexp("G1", "Exp"),
-        multiexp("G2", "Exp")
+        multiexp("G1", "Fr"),
+        multiexp("G2", "Fr")
     ));
 }
