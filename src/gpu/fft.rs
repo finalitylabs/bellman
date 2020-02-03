@@ -90,7 +90,7 @@ where
         let lwsd = cmp::min(deg - 1, MAX_LOCAL_WORK_SIZE_DEGREE);
         let kernel = self
             .proque
-            .kernel_builder("radix_fft")
+            .kernel_builder("Fr_fft")
             .global_work_size([n >> deg << lwsd])
             .local_work_size(1 << lwsd)
             .arg(if in_src {

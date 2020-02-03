@@ -1,7 +1,7 @@
 /*
  * FFT algorithm is inspired from: http://www.bealto.com/gpu-fft_group-1.html
  */
-__kernel void radix_fft(__global GROUP* x, // Source buffer
+__kernel void GROUP_fft(__global GROUP* x, // Source buffer
                         __global GROUP* y, // Destination buffer
                         __global FIELD* pq, // Precalculated twiddle factors
                         __global FIELD* omegas, // [omega, omega^2, omega^4, ...]
