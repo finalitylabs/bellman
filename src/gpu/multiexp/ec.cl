@@ -129,7 +129,7 @@ POINT_projective POINT_mul(POINT_projective a, EXPONENT b) {
   for(uint i = 0; i < EXPONENT_BITS; i++) {
     if (EXPONENT_get_bit(b, i))
       res = POINT_add(res, a);
-    b = FIELD_double(b);
+    a = POINT_double(a);
   }
   return res;
 }
