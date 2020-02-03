@@ -29,6 +29,7 @@ FIELD2 FIELD2_double(FIELD2 a) {
 FIELD2 FIELD2_neg(FIELD2 a) {
   a.c0 = FIELD_neg(a.c0);
   a.c1 = FIELD_neg(a.c1);
+  return a;
 }
 
 /*
