@@ -31,7 +31,7 @@ __kernel void radix_fft(__global GROUP* x, // Source buffer
   FIELD twiddle = FIELD_pow_lookup(omegas, (n >> lgp >> deg) * k);
   FIELD tmp = FIELD_pow(twiddle, counts);
   for(uint i = counts; i < counte; i++) {
-    u[i] = FIELD_mul(tmp, x[i*t]);
+    u[i] = GROUP_mul(x[i*t], tmp);
     tmp = FIELD_mul(tmp, twiddle);
   }
   barrier(CLK_LOCAL_MEM_FENCE);
