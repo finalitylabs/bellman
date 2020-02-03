@@ -43,7 +43,7 @@ __kernel void radix_fft(__global GROUP* x, // Source buffer
       uint di = i & (bit - 1);
       uint i0 = (i << 1) - di;
       uint i1 = i0 + bit;
-      tmp = u[i0];
+      GROUP tmp = u[i0];
       u[i0] = GROUP_add(u[i0], u[i1]);
       u[i1] = GROUP_sub(tmp, u[i1]);
       if(di != 0) u[i1] = GROUP_mul(u[i1], pq[di << rnd << pqshift]);
