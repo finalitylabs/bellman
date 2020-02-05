@@ -188,7 +188,11 @@ where
 {
     info!("Bellperson {} is being used!", BELLMAN_VERSION);
 
-    let _prio_lock = PriorityLock::lock_if_priority(priority);
+    let _prio_lock = if priority {
+        Some(PriorityLock::lock())
+    } else {
+        None
+    };
 
     let mut prover = ProvingAssignment {
         a_aux_density: DensityTracker::new(),
