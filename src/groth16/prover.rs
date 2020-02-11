@@ -231,11 +231,6 @@ where
         );
     }
 
-    let mut log_d = 0u32;
-    while (1 << log_d) < n {
-        log_d += 1;
-    }
-
     #[cfg(feature = "gpu")]
     let prio_lock = if priority {
         Some(PriorityLock::lock())
@@ -243,7 +238,7 @@ where
         None
     };
 
-    let mut fft_kern = Some(LockedFFTKernel::<E>::new(priority, log_d));
+    let mut fft_kern = Some(LockedFFTKernel::<E>::new(priority));
 
     let a_s = provers
         .iter_mut()

@@ -69,7 +69,6 @@ where
     E: Engine,
 {
     priority: bool,
-    log_d: u32,
     kernel: Option<FFTKernel<E>>,
 }
 
@@ -77,10 +76,9 @@ impl<E> LockedFFTKernel<E>
 where
     E: Engine,
 {
-    pub fn new(priority: bool, log_d: u32) -> LockedFFTKernel<E> {
+    pub fn new(priority: bool) -> LockedFFTKernel<E> {
         LockedFFTKernel::<E> {
             priority,
-            log_d,
             kernel: None,
         }
     }
@@ -94,7 +92,7 @@ where
             self.free();
         } else if self.kernel.is_none() {
             info!("GPU is available!");
-            self.kernel = create_fft_kernel::<E>(self.log_d, self.priority);
+            self.kernel = create_fft_kernel::<E>(self.priority);
         }
         &mut self.kernel
     }
