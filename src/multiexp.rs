@@ -363,11 +363,11 @@ fn test_with_bls12() {
     assert_eq!(naive, fast);
 }
 
-pub fn create_multiexp_kernel<E>() -> Option<gpu::MultiexpKernel<E>>
+pub fn create_multiexp_kernel<E>(priority: bool) -> Option<gpu::MultiexpKernel<E>>
 where
     E: paired::Engine,
 {
-    match gpu::MultiexpKernel::<E>::create() {
+    match gpu::MultiexpKernel::<E>::create(priority) {
         Ok(k) => {
             info!("GPU Multiexp kernel instantiated!");
             Some(k)
@@ -387,7 +387,7 @@ pub fn gpu_multiexp_consistency() {
 
     const MAX_LOG_D: usize = 20;
     const START_LOG_D: usize = 10;
-    let mut kern = gpu::MultiexpKernel::<Bls12>::create().ok();
+    let mut kern = gpu::MultiexpKernel::<Bls12>::create(false).ok();
     if kern.is_none() {
         panic!("Cannot initialize kernel!");
     }

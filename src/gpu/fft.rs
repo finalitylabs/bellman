@@ -24,13 +24,14 @@ where
     fft_pq_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
     fft_omg_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
     _lock: locks::GPULock, // RFC 1857: struct fields are dropped in the same order as they are declared.
+    priority: bool,
 }
 
 impl<E> FFTKernel<E>
 where
     E: Engine,
 {
-    pub fn create(n: u32) -> GPUResult<FFTKernel<E>> {
+    pub fn create(n: u32, priority: bool) -> GPUResult<FFTKernel<E>> {
         let lock = locks::GPULock::lock();
 
         let src = sources::kernel::<E>();
@@ -72,6 +73,7 @@ where
             fft_pq_buffer: pqbuff,
             fft_omg_buffer: omgbuff,
             _lock: lock,
+            priority,
         })
     }
 

@@ -561,11 +561,11 @@ fn parallel_fft_consistency() {
     test_consistency::<Bls12, _>(rng);
 }
 
-pub fn create_fft_kernel<E>(log_d: u32) -> Option<gpu::FFTKernel<E>>
+pub fn create_fft_kernel<E>(log_d: u32, priority: bool) -> Option<gpu::FFTKernel<E>>
 where
     E: Engine,
 {
-    match gpu::FFTKernel::create(1 << log_d) {
+    match gpu::FFTKernel::create(1 << log_d, priority) {
         Ok(k) => {
             info!("GPU FFT kernel instantiated!");
             Some(k)
@@ -586,7 +586,7 @@ pub fn gpu_fft_consistency() {
 
     let worker = Worker::new();
     let log_cpus = worker.log_num_cpus();
-    let mut kern = gpu::FFTKernel::create(1 << 24).expect("Cannot initialize kernel!");
+    let mut kern = gpu::FFTKernel::create(1 << 24, false).expect("Cannot initialize kernel!");
 
     for log_d in 1..25 {
         let d = 1 << log_d;

@@ -90,7 +90,7 @@ where
             }
         } else if self.kernel.is_none() {
             info!("GPU is available!");
-            self.kernel = create_fft_kernel::<E>(self.log_d);
+            self.kernel = create_fft_kernel::<E>(self.log_d, self.priority);
         }
         &mut self.kernel
     }
@@ -121,7 +121,7 @@ where
             }
         } else if self.kernel.is_none() {
             info!("GPU is available!");
-            self.kernel = create_multiexp_kernel::<E>();
+            self.kernel = create_multiexp_kernel::<E>(self.priority);
         }
         &mut self.kernel
     }
