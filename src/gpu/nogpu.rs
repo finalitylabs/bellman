@@ -15,7 +15,7 @@ impl<E> FFTKernel<E>
 where
     E: ScalarEngine,
 {
-    pub fn create(_: u32) -> GPUResult<FFTKernel<E>> {
+    pub fn create(_: u32, _: bool) -> GPUResult<FFTKernel<E>> {
         return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
     }
 
@@ -32,7 +32,7 @@ impl<E> MultiexpKernel<E>
 where
     E: ScalarEngine,
 {
-    pub fn create() -> GPUResult<MultiexpKernel<E>> {
+    pub fn create(_: bool) -> GPUResult<MultiexpKernel<E>> {
         return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
     }
 
