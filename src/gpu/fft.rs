@@ -90,7 +90,6 @@ where
         max_deg: u32,
         in_src: bool,
     ) -> GPUResult<()> {
-
         if locks::PriorityLock::should_break(self.priority) {
             return Err(GPUError::GPUTaken);
         }

@@ -87,7 +87,7 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
     pub fn fft(
         &mut self,
         worker: &Worker,
-        kern: &mut Option<gpu::FFTKernel<E>>,
+        kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
         best_fft(kern, &mut self.coeffs, worker, &self.omega, self.exp)?;
         Ok(())
@@ -96,7 +96,7 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
     pub fn ifft(
         &mut self,
         worker: &Worker,
-        kern: &mut Option<gpu::FFTKernel<E>>,
+        kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
         best_fft(kern, &mut self.coeffs, worker, &self.omegainv, self.exp)?;
 
@@ -132,7 +132,7 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
     pub fn coset_fft(
         &mut self,
         worker: &Worker,
-        kern: &mut Option<gpu::FFTKernel<E>>,
+        kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
         self.distribute_powers(worker, E::Fr::multiplicative_generator());
         self.fft(worker, kern)?;
@@ -142,7 +142,7 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
     pub fn icoset_fft(
         &mut self,
         worker: &Worker,
-        kern: &mut Option<gpu::FFTKernel<E>>,
+        kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
         let geninv = self.geninv;
         self.ifft(worker, kern)?;
@@ -288,14 +288,14 @@ impl<E: ScalarEngine> Group<E> for Scalar<E> {
 }
 
 fn best_fft<E: Engine, T: Group<E>>(
-    kern: &mut Option<gpu::FFTKernel<E>>,
+    kern: &mut Option<gpu::LockedFFTKernel<E>>,
     a: &mut [T],
     worker: &Worker,
     omega: &E::Fr,
     log_n: u32,
 ) -> gpu::GPUResult<()> {
-    if let Some(ref mut k) = kern {
-        match gpu_fft(k, a, omega, log_n) {
+    if let Some(ref mut kern) = kern {
+        match kern.with(|k| gpu_fft(k, a, omega, log_n)) {
             Ok(_) => {
                 return Ok(());
             }

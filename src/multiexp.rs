@@ -263,7 +263,7 @@ pub fn multiexp<Q, D, G, S>(
     bases: S,
     density_map: D,
     exponents: Arc<Vec<<<G::Engine as ScalarEngine>::Fr as PrimeField>::Repr>>,
-    kern: &mut Option<gpu::MultiexpKernel<G::Engine>>,
+    kern: &mut Option<gpu::LockedMultiexpKernel<G::Engine>>,
 ) -> Box<dyn Future<Item = <G as CurveAffine>::Projective, Error = SynthesisError>>
 where
     for<'a> &'a Q: QueryDensity,
@@ -272,18 +272,20 @@ where
     G::Engine: paired::Engine,
     S: SourceBuilder<G>,
 {
-    if let Some(ref mut k) = kern {
-        let mut exps = vec![exponents[0]; exponents.len()];
-        let mut n = 0;
-        for (&e, d) in exponents.iter().zip(density_map.as_ref().iter()) {
-            if d {
-                exps[n] = e;
-                n += 1;
+    if let Some(ref mut kern) = kern {
+        match kern.with(|k| {
+            let mut exps = vec![exponents[0]; exponents.len()];
+            let mut n = 0;
+            for (&e, d) in exponents.iter().zip(density_map.as_ref().iter()) {
+                if d {
+                    exps[n] = e;
+                    n += 1;
+                }
             }
-        }
 
-        let (bss, skip) = bases.clone().get();
-        match k.multiexp(pool, bss, Arc::new(exps.clone()), skip, n) {
+            let (bss, skip) = bases.clone().get();
+            k.multiexp(pool, bss, Arc::new(exps.clone()), skip, n)
+        }) {
             Ok(p) => {
                 return Box::new(pool.compute(move || Ok(p)));
             }
@@ -387,10 +389,7 @@ pub fn gpu_multiexp_consistency() {
 
     const MAX_LOG_D: usize = 20;
     const START_LOG_D: usize = 10;
-    let mut kern = gpu::MultiexpKernel::<Bls12>::create(false).ok();
-    if kern.is_none() {
-        panic!("Cannot initialize kernel!");
-    }
+    let mut kern = Some(gpu::LockedMultiexpKernel::<Bls12>::new(false));
     let pool = Worker::new();
 
     let rng = &mut rand::thread_rng();

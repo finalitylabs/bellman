@@ -57,6 +57,7 @@ impl Drop for PriorityLock {
     }
 }
 
+use super::error::{GPUError, GPUResult};
 use super::fft::FFTKernel;
 use super::multiexp::MultiexpKernel;
 use crate::domain::create_fft_kernel;
@@ -83,16 +84,38 @@ where
             kernel: None,
         }
     }
-    pub fn get(&mut self) -> &mut Option<FFTKernel<E>> {
+    fn free(&mut self) {
+        if let Some(_kernel) = self.kernel.take() {
+            warn!("GPU acquired by a high priority process! Freeing up kernels...");
+        }
+    }
+    fn get(&mut self) -> &mut Option<FFTKernel<E>> {
         if PriorityLock::should_break(self.priority) {
-            if let Some(_kernel) = self.kernel.take() {
-                warn!("GPU acquired by a high priority process! Freeing up kernels...");
-            }
+            self.free();
         } else if self.kernel.is_none() {
             info!("GPU is available!");
             self.kernel = create_fft_kernel::<E>(self.log_d, self.priority);
         }
         &mut self.kernel
+    }
+    pub fn with<F, R>(&mut self, f: F) -> GPUResult<R>
+    where
+        F: FnOnce(&mut FFTKernel<E>) -> GPUResult<R>,
+    {
+        if let Some(ref mut k) = self.get() {
+            match f(k) {
+                Ok(r) => Ok(r),
+                Err(e) => match e {
+                    GPUError::GPUTaken => {
+                        self.free();
+                        Err(e)
+                    }
+                    _ => Err(e),
+                },
+            }
+        } else {
+            Err(GPUError::GPUTaken)
+        }
     }
 }
 
@@ -114,15 +137,37 @@ where
             kernel: None,
         }
     }
-    pub fn get(&mut self) -> &mut Option<MultiexpKernel<E>> {
+    fn free(&mut self) {
+        if let Some(_kernel) = self.kernel.take() {
+            warn!("GPU acquired by a high priority process! Freeing up kernels...");
+        }
+    }
+    fn get(&mut self) -> &mut Option<MultiexpKernel<E>> {
         if PriorityLock::should_break(self.priority) {
-            if let Some(_kernel) = self.kernel.take() {
-                warn!("GPU acquired by a high priority process! Freeing up kernels...");
-            }
+            self.free();
         } else if self.kernel.is_none() {
             info!("GPU is available!");
             self.kernel = create_multiexp_kernel::<E>(self.priority);
         }
         &mut self.kernel
+    }
+    pub fn with<F, R>(&mut self, f: F) -> GPUResult<R>
+    where
+        F: FnOnce(&mut MultiexpKernel<E>) -> GPUResult<R>,
+    {
+        if let Some(ref mut k) = self.get() {
+            match f(k) {
+                Ok(r) => Ok(r),
+                Err(e) => match e {
+                    GPUError::GPUTaken => {
+                        self.free();
+                        Err(e)
+                    }
+                    _ => Err(e),
+                },
+            }
+        } else {
+            Err(GPUError::GPUTaken)
+        }
     }
 }

@@ -174,7 +174,7 @@ where
             exp_buffer: expbuff,
             core_count: core_count,
             n,
-            priority
+            priority,
         })
     }
 
