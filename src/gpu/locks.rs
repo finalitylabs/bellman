@@ -56,34 +56,71 @@ impl Drop for PriorityLock {
     }
 }
 
-pub struct LockedKernel<K, F>
+use super::fft::FFTKernel;
+use super::multiexp::MultiexpKernel;
+use crate::domain::create_fft_kernel;
+use crate::multiexp::create_multiexp_kernel;
+use paired::Engine;
+
+pub struct LockedFFTKernel<E>
 where
-    F: Fn() -> Option<K>,
+    E: Engine,
 {
     priority: bool,
-    _f: F,
-    kernel: Option<K>,
+    log_d: u32,
+    kernel: Option<FFTKernel<E>>,
 }
 
-impl<K, F> LockedKernel<K, F>
+impl<E> LockedFFTKernel<E>
 where
-    F: Fn() -> Option<K>,
+    E: Engine,
 {
-    pub fn new(f: F, priority: bool) -> LockedKernel<K, F> {
-        LockedKernel::<K, F> {
+    pub fn new(priority: bool, log_d: u32) -> LockedFFTKernel<E> {
+        LockedFFTKernel::<E> {
             priority,
-            _f: f,
+            log_d,
             kernel: None,
         }
     }
-    pub fn get(&mut self) -> &mut Option<K> {
+    pub fn get(&mut self) -> &mut Option<FFTKernel<E>> {
         if !self.priority && PriorityLock::is_locked() {
             if let Some(_kernel) = self.kernel.take() {
                 warn!("GPU acquired by a high priority process! Freeing up kernels...");
             }
         } else if self.kernel.is_none() {
             info!("GPU is available!");
-            self.kernel = (self._f)();
+            self.kernel = create_fft_kernel::<E>(self.log_d);
+        }
+        &mut self.kernel
+    }
+}
+
+pub struct LockedMultiexpKernel<E>
+where
+    E: Engine,
+{
+    priority: bool,
+    kernel: Option<MultiexpKernel<E>>,
+}
+
+impl<E> LockedMultiexpKernel<E>
+where
+    E: Engine,
+{
+    pub fn new(priority: bool) -> LockedMultiexpKernel<E> {
+        LockedMultiexpKernel::<E> {
+            priority,
+            kernel: None,
+        }
+    }
+    pub fn get(&mut self) -> &mut Option<MultiexpKernel<E>> {
+        if !self.priority && PriorityLock::is_locked() {
+            if let Some(_kernel) = self.kernel.take() {
+                warn!("GPU acquired by a high priority process! Freeing up kernels...");
+            }
+        } else if self.kernel.is_none() {
+            info!("GPU is available!");
+            self.kernel = create_multiexp_kernel::<E>();
         }
         &mut self.kernel
     }

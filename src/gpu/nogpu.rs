@@ -16,15 +16,11 @@ where
     E: ScalarEngine,
 {
     pub fn create(_: u32) -> GPUResult<FFTKernel<E>> {
-        return Err(GPUError {
-            msg: "GPU accelerator is not enabled!".to_string(),
-        });
+        return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
     }
 
     pub fn radix_fft(&mut self, _: &mut [E::Fr], _: &E::Fr, _: u32) -> GPUResult<()> {
-        return Err(GPUError {
-            msg: "GPU accelerator is not enabled!".to_string(),
-        });
+        return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
     }
 }
 
@@ -37,9 +33,7 @@ where
     E: ScalarEngine,
 {
     pub fn create() -> GPUResult<MultiexpKernel<E>> {
-        return Err(GPUError {
-            msg: "GPU accelerator is not enabled!".to_string(),
-        });
+        return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
     }
 
     pub fn multiexp<G>(
@@ -53,21 +47,46 @@ where
     where
         G: CurveAffine,
     {
-        return Err(GPUError {
-            msg: "GPU accelerator is not enabled!".to_string(),
-        });
+        return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
     }
 }
 
-pub struct LockedKernel<K> {
-    kernel: Option<K>,
+use paired::Engine;
+
+pub struct LockedFFTKernel<E>
+where
+    E: Engine,
+{
+    kernel: Option<FFTKernel<E>>,
 }
 
-impl<K> LockedKernel<K> {
-    pub fn new<F>(_: F, _: bool) -> LockedKernel<K> {
-        LockedKernel { kernel: None }
+impl<E> LockedFFTKernel<E>
+where
+    E: Engine,
+{
+    pub fn new(_: bool, _: u32) -> LockedFFTKernel<E> {
+        LockedFFTKernel::<E> { kernel: None }
     }
-    pub fn get(&mut self) -> &mut Option<K> {
+    pub fn get(&mut self) -> &mut Option<FFTKernel<E>> {
+        &mut self.kernel
+    }
+}
+
+pub struct LockedMultiexpKernel<E>
+where
+    E: Engine,
+{
+    kernel: Option<MultiexpKernel<E>>,
+}
+
+impl<E> LockedMultiexpKernel<E>
+where
+    E: Engine,
+{
+    pub fn new(_: bool) -> LockedMultiexpKernel<E> {
+        LockedMultiexpKernel::<E> { kernel: None }
+    }
+    pub fn get(&mut self) -> &mut Option<MultiexpKernel<E>> {
         &mut self.kernel
     }
 }

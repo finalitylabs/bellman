@@ -8,10 +8,10 @@ use rand_core::RngCore;
 use rayon::prelude::*;
 
 use super::{ParameterSource, Proof};
-use crate::domain::{create_fft_kernel, EvaluationDomain, Scalar};
-use crate::gpu::LockedKernel;
+use crate::domain::{EvaluationDomain, Scalar};
+use crate::gpu::{LockedFFTKernel, LockedMultiexpKernel};
 use crate::multicore::Worker;
-use crate::multiexp::{create_multiexp_kernel, multiexp, DensityTracker, FullDensity};
+use crate::multiexp::{multiexp, DensityTracker, FullDensity};
 use crate::{
     Circuit, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable, BELLMAN_VERSION,
 };
@@ -243,7 +243,7 @@ where
         None
     };
 
-    let mut fft_kern = LockedKernel::new(|| create_fft_kernel::<E>(log_d), priority);
+    let mut fft_kern = LockedFFTKernel::<E>::new(priority, log_d);
 
     let a_s = provers
         .iter_mut()
@@ -279,7 +279,7 @@ where
         .collect::<Result<Vec<_>, SynthesisError>>()?;
 
     drop(fft_kern);
-    let mut multiexp_kern = LockedKernel::new(|| create_multiexp_kernel::<E>(), priority);
+    let mut multiexp_kern = LockedMultiexpKernel::<E>::new(priority);
 
     let h_s = a_s
         .into_iter()
