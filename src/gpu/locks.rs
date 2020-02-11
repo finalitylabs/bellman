@@ -43,11 +43,12 @@ impl PriorityLock {
         debug!("Priority lock acquired!");
         PriorityLock(f)
     }
-    pub fn is_locked() -> bool {
-        File::create(tmp_path(PRIORITY_LOCK_NAME))
-            .unwrap()
-            .try_lock_exclusive()
-            .is_err()
+    pub fn should_break(priority: bool) -> bool {
+        !priority
+            && File::create(tmp_path(PRIORITY_LOCK_NAME))
+                .unwrap()
+                .try_lock_exclusive()
+                .is_err()
     }
 }
 impl Drop for PriorityLock {
@@ -83,7 +84,7 @@ where
         }
     }
     pub fn get(&mut self) -> &mut Option<FFTKernel<E>> {
-        if !self.priority && PriorityLock::is_locked() {
+        if PriorityLock::should_break(self.priority) {
             if let Some(_kernel) = self.kernel.take() {
                 warn!("GPU acquired by a high priority process! Freeing up kernels...");
             }
@@ -114,7 +115,7 @@ where
         }
     }
     pub fn get(&mut self) -> &mut Option<MultiexpKernel<E>> {
-        if !self.priority && PriorityLock::is_locked() {
+        if PriorityLock::should_break(self.priority) {
             if let Some(_kernel) = self.kernel.take() {
                 warn!("GPU acquired by a high priority process! Freeing up kernels...");
             }
