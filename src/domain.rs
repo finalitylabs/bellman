@@ -565,7 +565,7 @@ pub fn create_fft_kernel<E>(priority: bool) -> Option<gpu::FFTKernel<E>>
 where
     E: Engine,
 {
-    const N: u32 = 27;
+    const N: u32 = 1 << 27;
     match gpu::FFTKernel::create(N, priority) {
         Ok(k) => {
             info!("GPU FFT kernel instantiated!");
