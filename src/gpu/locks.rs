@@ -85,25 +85,25 @@ macro_rules! locked_kernel {
                     kernel: None,
                 }
             }
+
             fn free(&mut self) {
                 if let Some(_kernel) = self.kernel.take() {
                     warn!("GPU acquired by a high priority process! Freeing up kernels...");
                 }
             }
-            fn get(&mut self) -> &mut Option<$kern<E>> {
+
+            pub fn with<F, R>(&mut self, f: F) -> GPUResult<R>
+            where
+                F: FnOnce(&mut $kern<E>) -> GPUResult<R>,
+            {
                 if PriorityLock::should_break(self.priority) {
                     self.free();
                 } else if self.kernel.is_none() {
                     info!("GPU is available!");
                     self.kernel = $func::<E>(self.priority);
                 }
-                &mut self.kernel
-            }
-            pub fn with<F, R>(&mut self, f: F) -> GPUResult<R>
-            where
-                F: FnOnce(&mut $kern<E>) -> GPUResult<R>,
-            {
-                if let Some(ref mut k) = self.get() {
+
+                if let Some(ref mut k) = self.kernel {
                     match f(k) {
                         Ok(r) => Ok(r),
                         Err(e) => match e {
