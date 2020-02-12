@@ -273,7 +273,7 @@ where
     S: SourceBuilder<G>,
 {
     if let Some(ref mut kern) = kern {
-        match kern.with(|k| {
+        match kern.with(|k: &mut gpu::MultiexpKernel<G::Engine>| {
             let mut exps = vec![exponents[0]; exponents.len()];
             let mut n = 0;
             for (&e, d) in exponents.iter().zip(density_map.as_ref().iter()) {

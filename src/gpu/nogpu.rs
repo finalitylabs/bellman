@@ -53,40 +53,27 @@ where
 
 use paired::Engine;
 
-pub struct LockedFFTKernel<E>
-where
-    E: Engine,
-{
-    kernel: Option<FFTKernel<E>>,
+macro_rules! locked_kernel {
+    ($class:ident) => {
+        pub struct $class<E>(PhantomData<E>);
+
+        impl<E> $class<E>
+        where
+            E: Engine,
+        {
+            pub fn new(_: bool) -> $class<E> {
+                $class::<E>(PhantomData)
+            }
+
+            pub fn with<F, R, K>(&mut self, _: F) -> GPUResult<R>
+            where
+                F: FnOnce(&mut K) -> GPUResult<R>,
+            {
+                return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
+            }
+        }
+    };
 }
 
-impl<E> LockedFFTKernel<E>
-where
-    E: Engine,
-{
-    pub fn new(_: bool, _: u32) -> LockedFFTKernel<E> {
-        LockedFFTKernel::<E> { kernel: None }
-    }
-    pub fn get(&mut self) -> &mut Option<FFTKernel<E>> {
-        &mut self.kernel
-    }
-}
-
-pub struct LockedMultiexpKernel<E>
-where
-    E: Engine,
-{
-    kernel: Option<MultiexpKernel<E>>,
-}
-
-impl<E> LockedMultiexpKernel<E>
-where
-    E: Engine,
-{
-    pub fn new(_: bool) -> LockedMultiexpKernel<E> {
-        LockedMultiexpKernel::<E> { kernel: None }
-    }
-    pub fn get(&mut self) -> &mut Option<MultiexpKernel<E>> {
-        &mut self.kernel
-    }
-}
+locked_kernel!(LockedFFTKernel);
+locked_kernel!(LockedMultiexpKernel);
