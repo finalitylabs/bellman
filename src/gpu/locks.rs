@@ -64,108 +64,63 @@ use crate::domain::create_fft_kernel;
 use crate::multiexp::create_multiexp_kernel;
 use paired::Engine;
 
-pub struct LockedFFTKernel<E>
-where
-    E: Engine,
-{
-    priority: bool,
-    kernel: Option<FFTKernel<E>>,
-}
+macro_rules! locked_kernel {
+    ($class:ident, $kern:ident, $func:ident) => {
 
-impl<E> LockedFFTKernel<E>
-where
-    E: Engine,
-{
-    pub fn new(priority: bool) -> LockedFFTKernel<E> {
-        LockedFFTKernel::<E> {
-            priority,
-            kernel: None,
+        pub struct $class<E>
+        where
+            E: Engine,
+        {
+            priority: bool,
+            kernel: Option<$kern<E>>,
         }
-    }
-    fn free(&mut self) {
-        if let Some(_kernel) = self.kernel.take() {
-            warn!("GPU acquired by a high priority process! Freeing up kernels...");
-        }
-    }
-    fn get(&mut self) -> &mut Option<FFTKernel<E>> {
-        if PriorityLock::should_break(self.priority) {
-            self.free();
-        } else if self.kernel.is_none() {
-            info!("GPU is available!");
-            self.kernel = create_fft_kernel::<E>(self.priority);
-        }
-        &mut self.kernel
-    }
-    pub fn with<F, R>(&mut self, f: F) -> GPUResult<R>
-    where
-        F: FnOnce(&mut FFTKernel<E>) -> GPUResult<R>,
-    {
-        if let Some(ref mut k) = self.get() {
-            match f(k) {
-                Ok(r) => Ok(r),
-                Err(e) => match e {
-                    GPUError::GPUTaken => {
-                        self.free();
-                        Err(e)
-                    }
-                    _ => Err(e),
-                },
+
+        impl<E> $class<E>
+        where
+            E: Engine,
+        {
+            pub fn new(priority: bool) -> $class<E> {
+                $class::<E> {
+                    priority,
+                    kernel: None,
+                }
             }
-        } else {
-            Err(GPUError::GPUTaken)
-        }
-    }
-}
-
-pub struct LockedMultiexpKernel<E>
-where
-    E: Engine,
-{
-    priority: bool,
-    kernel: Option<MultiexpKernel<E>>,
-}
-
-impl<E> LockedMultiexpKernel<E>
-where
-    E: Engine,
-{
-    pub fn new(priority: bool) -> LockedMultiexpKernel<E> {
-        LockedMultiexpKernel::<E> {
-            priority,
-            kernel: None,
-        }
-    }
-    fn free(&mut self) {
-        if let Some(_kernel) = self.kernel.take() {
-            warn!("GPU acquired by a high priority process! Freeing up kernels...");
-        }
-    }
-    fn get(&mut self) -> &mut Option<MultiexpKernel<E>> {
-        if PriorityLock::should_break(self.priority) {
-            self.free();
-        } else if self.kernel.is_none() {
-            info!("GPU is available!");
-            self.kernel = create_multiexp_kernel::<E>(self.priority);
-        }
-        &mut self.kernel
-    }
-    pub fn with<F, R>(&mut self, f: F) -> GPUResult<R>
-    where
-        F: FnOnce(&mut MultiexpKernel<E>) -> GPUResult<R>,
-    {
-        if let Some(ref mut k) = self.get() {
-            match f(k) {
-                Ok(r) => Ok(r),
-                Err(e) => match e {
-                    GPUError::GPUTaken => {
-                        self.free();
-                        Err(e)
-                    }
-                    _ => Err(e),
-                },
+            fn free(&mut self) {
+                if let Some(_kernel) = self.kernel.take() {
+                    warn!("GPU acquired by a high priority process! Freeing up kernels...");
+                }
             }
-        } else {
-            Err(GPUError::GPUTaken)
+            fn get(&mut self) -> &mut Option<$kern<E>> {
+                if PriorityLock::should_break(self.priority) {
+                    self.free();
+                } else if self.kernel.is_none() {
+                    info!("GPU is available!");
+                    self.kernel = $func::<E>(self.priority);
+                }
+                &mut self.kernel
+            }
+            pub fn with<F, R>(&mut self, f: F) -> GPUResult<R>
+            where
+                F: FnOnce(&mut $kern<E>) -> GPUResult<R>,
+            {
+                if let Some(ref mut k) = self.get() {
+                    match f(k) {
+                        Ok(r) => Ok(r),
+                        Err(e) => match e {
+                            GPUError::GPUTaken => {
+                                self.free();
+                                Err(e)
+                            }
+                            _ => Err(e),
+                        },
+                    }
+                } else {
+                    Err(GPUError::GPUTaken)
+                }
+            }
         }
-    }
+    };
 }
+
+locked_kernel!(LockedFFTKernel, FFTKernel, create_fft_kernel);
+locked_kernel!(LockedMultiexpKernel, MultiexpKernel, create_multiexp_kernel);
