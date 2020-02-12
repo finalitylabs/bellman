@@ -66,7 +66,6 @@ use paired::Engine;
 
 macro_rules! locked_kernel {
     ($class:ident, $kern:ident, $func:ident) => {
-
         pub struct $class<E>
         where
             E: Engine,
@@ -104,16 +103,11 @@ macro_rules! locked_kernel {
                 }
 
                 if let Some(ref mut k) = self.kernel {
-                    match f(k) {
-                        Ok(r) => Ok(r),
-                        Err(e) => match e {
-                            GPUError::GPUTaken => {
-                                self.free();
-                                Err(e)
-                            }
-                            _ => Err(e),
-                        },
+                    let res = f(k);
+                    if let Err(GPUError::GPUTaken) = res {
+                        self.free();
                     }
+                    res
                 } else {
                     Err(GPUError::GPUTaken)
                 }
