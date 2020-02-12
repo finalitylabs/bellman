@@ -65,7 +65,7 @@ use crate::multiexp::create_multiexp_kernel;
 use paired::Engine;
 
 macro_rules! locked_kernel {
-    ($class:ident, $kern:ident, $func:ident) => {
+    ($class:ident, $kern:ident, $func:ident, $name:expr) => {
         pub struct $class<E>
         where
             E: Engine,
@@ -87,7 +87,10 @@ macro_rules! locked_kernel {
 
             fn free(&mut self) {
                 if let Some(_kernel) = self.kernel.take() {
-                    warn!("GPU acquired by a high priority process! Freeing up kernels...");
+                    warn!(
+                        "GPU acquired by a high priority process! Freeing up {} kernels...",
+                        $name
+                    );
                 }
             }
 
@@ -98,7 +101,7 @@ macro_rules! locked_kernel {
                 if PriorityLock::should_break(self.priority) {
                     self.free();
                 } else if self.kernel.is_none() {
-                    info!("GPU is available!");
+                    info!("GPU is available for {}!", $name);
                     self.kernel = $func::<E>(self.priority);
                 }
 
@@ -116,5 +119,10 @@ macro_rules! locked_kernel {
     };
 }
 
-locked_kernel!(LockedFFTKernel, FFTKernel, create_fft_kernel);
-locked_kernel!(LockedMultiexpKernel, MultiexpKernel, create_multiexp_kernel);
+locked_kernel!(LockedFFTKernel, FFTKernel, create_fft_kernel, "FFT");
+locked_kernel!(
+    LockedMultiexpKernel,
+    MultiexpKernel,
+    create_multiexp_kernel,
+    "Multiexp"
+);
