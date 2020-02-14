@@ -1,4 +1,3 @@
-use std::error;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -14,21 +13,8 @@ impl fmt::Display for GPUError {
         if let GPUError::Msg(ref e) = *self {
             e.fmt(f)
         } else {
-            write!(f, "{}", self.to_string())
+            write!(f, "GPU taken by a high priority process!")
         }
-    }
-}
-
-impl error::Error for GPUError {
-    fn description(&self) -> &str {
-        match *self {
-            GPUError::GPUTaken => "GPU taken by a high priority process!",
-            GPUError::Msg(_) => "GPU related error happened!",
-        }
-    }
-
-    fn cause(&self) -> Option<&dyn error::Error> {
-        None
     }
 }
 
