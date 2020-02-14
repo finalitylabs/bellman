@@ -70,6 +70,7 @@ macro_rules! locked_kernel {
         where
             E: Engine,
         {
+            log_d: usize,
             priority: bool,
             kernel: Option<$kern<E>>,
         }
@@ -78,8 +79,9 @@ macro_rules! locked_kernel {
         where
             E: Engine,
         {
-            pub fn new(priority: bool) -> $class<E> {
+            pub fn new(log_d: usize, priority: bool) -> $class<E> {
                 $class::<E> {
+                    log_d,
                     priority,
                     kernel: None,
                 }
@@ -102,7 +104,7 @@ macro_rules! locked_kernel {
                     self.free();
                 } else if self.kernel.is_none() {
                     info!("GPU is available for {}!", $name);
-                    self.kernel = $func::<E>(self.priority);
+                    self.kernel = $func::<E>(self.log_d, self.priority);
                 }
 
                 if let Some(ref mut k) = self.kernel {

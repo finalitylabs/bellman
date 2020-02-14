@@ -365,7 +365,7 @@ fn test_with_bls12() {
     assert_eq!(naive, fast);
 }
 
-pub fn create_multiexp_kernel<E>(priority: bool) -> Option<gpu::MultiexpKernel<E>>
+pub fn create_multiexp_kernel<E>(_log_d: usize, priority: bool) -> Option<gpu::MultiexpKernel<E>>
 where
     E: paired::Engine,
 {
@@ -389,7 +389,7 @@ pub fn gpu_multiexp_consistency() {
 
     const MAX_LOG_D: usize = 20;
     const START_LOG_D: usize = 10;
-    let mut kern = Some(gpu::LockedMultiexpKernel::<Bls12>::new(false));
+    let mut kern = Some(gpu::LockedMultiexpKernel::<Bls12>::new(MAX_LOG_D, false));
     let pool = Worker::new();
 
     let rng = &mut rand::thread_rng();

@@ -231,6 +231,11 @@ where
         );
     }
 
+    let mut log_d = 0;
+    while (1 << log_d) < n {
+        log_d += 1;
+    }
+
     #[cfg(feature = "gpu")]
     let prio_lock = if priority {
         Some(PriorityLock::lock())
@@ -238,7 +243,7 @@ where
         None
     };
 
-    let mut fft_kern = Some(LockedFFTKernel::<E>::new(priority));
+    let mut fft_kern = Some(LockedFFTKernel::<E>::new(log_d, priority));
 
     let a_s = provers
         .iter_mut()
@@ -274,7 +279,7 @@ where
         .collect::<Result<Vec<_>, SynthesisError>>()?;
 
     drop(fft_kern);
-    let mut multiexp_kern = Some(LockedMultiexpKernel::<E>::new(priority));
+    let mut multiexp_kern = Some(LockedMultiexpKernel::<E>::new(log_d, priority));
 
     let h_s = a_s
         .into_iter()

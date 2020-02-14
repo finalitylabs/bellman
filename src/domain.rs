@@ -561,12 +561,11 @@ fn parallel_fft_consistency() {
     test_consistency::<Bls12, _>(rng);
 }
 
-pub fn create_fft_kernel<E>(priority: bool) -> Option<gpu::FFTKernel<E>>
+pub fn create_fft_kernel<E>(log_d: usize, priority: bool) -> Option<gpu::FFTKernel<E>>
 where
     E: Engine,
 {
-    const N: u32 = 1 << 27;
-    match gpu::FFTKernel::create(N, priority) {
+    match gpu::FFTKernel::create(1 << log_d, priority) {
         Ok(k) => {
             info!("GPU FFT kernel instantiated!");
             Some(k)
