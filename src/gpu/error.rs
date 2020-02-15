@@ -1,39 +1,30 @@
-use std::fmt;
-
-#[derive(Debug, Clone)]
+#[derive(thiserror::Error, Debug)]
 pub enum GPUError {
+    #[error("GPUError: {0}")]
+    Simple(&'static str),
+    #[cfg(feature = "gpu")]
+    #[error("Ocl Error: {0}")]
+    Ocl(ocl::Error),
+    #[cfg(feature = "gpu")]
+    #[error("GPU taken by a high priority process!")]
     GPUTaken,
-    Msg(String),
 }
 
 pub type GPUResult<T> = std::result::Result<T, GPUError>;
 
-impl fmt::Display for GPUError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let GPUError::Msg(ref e) = *self {
-            e.fmt(f)
-        } else {
-            write!(f, "GPU taken by a high priority process!")
-        }
-    }
-}
-
-#[cfg(feature = "gpu")]
-use ocl;
-
 #[cfg(feature = "gpu")]
 impl From<ocl::Error> for GPUError {
     fn from(error: ocl::Error) -> Self {
-        GPUError::Msg(error.to_string())
+        GPUError::Ocl(error)
     }
 }
 
 #[cfg(feature = "gpu")]
 impl From<std::boxed::Box<dyn std::any::Any + std::marker::Send>> for GPUError {
     fn from(e: std::boxed::Box<dyn std::any::Any + std::marker::Send>) -> Self {
-        match &e.downcast_ref::<Self>() {
-            &Some(err) => err.clone(),
-            &None => GPUError::Msg("An unknown GPU error happened!".to_string()),
+        match e.downcast::<Self>() {
+            Ok(err) => *err,
+            Err(_) => GPUError::Simple("An unknown GPU error happened!"),
         }
     }
 }

@@ -16,11 +16,11 @@ where
     E: ScalarEngine,
 {
     pub fn create(_: u32, _: bool) -> GPUResult<FFTKernel<E>> {
-        return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
+        return Err(GPUError::Simple("GPU accelerator is not enabled!"));
     }
 
     pub fn radix_fft(&mut self, _: &mut [E::Fr], _: &E::Fr, _: u32) -> GPUResult<()> {
-        return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
+        return Err(GPUError::Simple("GPU accelerator is not enabled!"));
     }
 }
 
@@ -33,7 +33,7 @@ where
     E: ScalarEngine,
 {
     pub fn create(_: bool) -> GPUResult<MultiexpKernel<E>> {
-        return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
+        return Err(GPUError::Simple("GPU accelerator is not enabled!"));
     }
 
     pub fn multiexp<G>(
@@ -47,7 +47,7 @@ where
     where
         G: CurveAffine,
     {
-        return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
+        return Err(GPUError::Simple("GPU accelerator is not enabled!"));
     }
 }
 
@@ -69,7 +69,7 @@ macro_rules! locked_kernel {
             where
                 F: FnOnce(&mut K) -> GPUResult<R>,
             {
-                return Err(GPUError::Msg("GPU accelerator is not enabled!".to_string()));
+                return Err(GPUError::Simple("GPU accelerator is not enabled!"));
             }
         }
     };
