@@ -245,7 +245,7 @@ where
 
     let mut fft_kern = LockedKernel::new(|| create_fft_kernel::<E>(log_d), priority);
 
-    let a_s = provers
+    let abc_s = provers
         .iter_mut()
         .map(|prover| {
             let mut a =
@@ -254,14 +254,24 @@ where
                 EvaluationDomain::from_coeffs(std::mem::replace(&mut prover.b, Vec::new()))?;
             let mut c =
                 EvaluationDomain::from_coeffs(std::mem::replace(&mut prover.c, Vec::new()))?;
-
             a.ifft(&worker, fft_kern.get())?;
-            a.coset_fft(&worker, fft_kern.get())?;
             b.ifft(&worker, fft_kern.get())?;
-            b.coset_fft(&worker, fft_kern.get())?;
             c.ifft(&worker, fft_kern.get())?;
-            c.coset_fft(&worker, fft_kern.get())?;
+            Ok((a, b, c))
+        }).collect::<Result<Vec<_>, SynthesisError>>()?;
 
+    let abc_s = abc_s
+        .into_iter()
+        .map(|(mut a, mut b, mut c)| {
+            a.coset_fft(&worker, fft_kern.get())?;
+            b.coset_fft(&worker, fft_kern.get())?;
+            c.coset_fft(&worker, fft_kern.get())?;
+            Ok((a, b, c))
+        }).collect::<Result<Vec<_>, SynthesisError>>()?;
+
+    let a_s = abc_s
+        .into_iter()
+        .map(|(mut a, b, c)| {
             a.mul_assign(&worker, &b);
             drop(b);
             a.sub_assign(&worker, &c);
