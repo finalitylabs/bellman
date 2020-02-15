@@ -1,20 +1,16 @@
 use crate::gpu::error::{GPUError, GPUResult};
 use ocl::{Device, Platform};
 
-use fs2::FileExt;
 use log::info;
 use std::collections::HashMap;
-use std::fs::File;
-use std::{env, io};
+use std::env;
 
 pub const GPU_NVIDIA_PLATFORM_NAME: &str = "NVIDIA CUDA";
 // pub const CPU_INTEL_PLATFORM_NAME: &str = "Intel(R) CPU Runtime for OpenCL(TM) Applications";
 
 pub fn get_devices(platform_name: &str) -> GPUResult<Vec<Device>> {
     if env::var("BELLMAN_NO_GPU").is_ok() {
-        return Err(GPUError {
-            msg: "GPU accelerator is disabled!".to_string(),
-        });
+        return Err(GPUError::Simple("GPU accelerator is disabled!"));
     }
 
     let platform = Platform::list()?.into_iter().find(|&p| match p.name() {
@@ -23,9 +19,7 @@ pub fn get_devices(platform_name: &str) -> GPUResult<Vec<Device>> {
     });
     match platform {
         Some(p) => Ok(Device::list_all(p)?),
-        None => Err(GPUError {
-            msg: "GPU platform not found!".to_string(),
-        }),
+        None => Err(GPUError::Simple("GPU platform not found!")),
     }
 }
 
@@ -71,37 +65,13 @@ lazy_static::lazy_static! {
 pub fn get_core_count(d: Device) -> GPUResult<usize> {
     match CORE_COUNTS.get(&d.name()?[..]) {
         Some(&cores) => Ok(cores),
-        None => Err(GPUError {
-            msg: "Device unknown!".to_string(),
-        }),
+        None => Err(GPUError::Simple("Device unknown!")),
     }
 }
 
 pub fn get_memory(d: Device) -> GPUResult<u64> {
     match d.info(ocl::enums::DeviceInfo::GlobalMemSize)? {
         ocl::enums::DeviceInfoResult::GlobalMemSize(sz) => Ok(sz),
-        _ => Err(GPUError {
-            msg: "Cannot extract GPU memory!".to_string(),
-        }),
+        _ => Err(GPUError::Simple("Cannot extract GPU memory!")),
     }
-}
-
-#[derive(Debug)]
-pub struct LockedFile(File);
-
-pub const LOCK_NAME: &str = "/tmp/bellman.lock";
-
-pub fn lock() -> io::Result<LockedFile> {
-    info!("Creating GPU lock file");
-    let file = File::create(LOCK_NAME)?;
-
-    file.lock_exclusive()?;
-
-    info!("GPU lock file acquired");
-    Ok(LockedFile(file))
-}
-
-pub fn unlock(lock: LockedFile) {
-    drop(lock);
-    info!("GPU lock file released");
 }

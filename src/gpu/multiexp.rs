@@ -1,4 +1,5 @@
 use super::error::{GPUError, GPUResult};
+use super::locks;
 use super::sources;
 use super::structs;
 use super::utils;
@@ -257,9 +258,7 @@ where
             };
             self.g2_result_buffer.read(tres).enq()?;
         } else {
-            return Err(GPUError {
-                msg: "Only E::G1 and E::G2 are supported!".to_string(),
-            });
+            return Err(GPUError::Simple("Only E::G1 and E::G2 are supported!"));
         }
 
         // Using the algorithm below, we can calculate the final result by accumulating the results
@@ -287,6 +286,7 @@ where
     E: Engine,
 {
     kernels: Vec<SingleMultiexpKernel<E>>,
+    _lock: locks::GPULock, // RFC 1857: struct fields are dropped in the same order as they are declared.
 }
 
 impl<E> MultiexpKernel<E>
@@ -294,6 +294,8 @@ where
     E: Engine,
 {
     pub fn create() -> GPUResult<MultiexpKernel<E>> {
+        let lock = locks::GPULock::lock();
+
         let kernels: Vec<_> = GPU_NVIDIA_DEVICES
             .iter()
             .map(|d| SingleMultiexpKernel::<E>::create(*d))
@@ -301,9 +303,7 @@ where
             .map(|res| res.unwrap())
             .collect();
         if kernels.is_empty() {
-            return Err(GPUError {
-                msg: "No working GPUs found!".to_string(),
-            });
+            return Err(GPUError::Simple("No working GPUs found!"));
         }
         info!(
             "Multiexp: {} working device(s) selected. (CPU utilization: {})",
@@ -318,7 +318,10 @@ where
                 k.n
             );
         }
-        return Ok(MultiexpKernel::<E> { kernels });
+        return Ok(MultiexpKernel::<E> {
+            kernels,
+            _lock: lock,
+        });
     }
 
     pub fn multiexp<G>(
@@ -376,9 +379,12 @@ where
                 &mut None,
             );
 
+            let mut results = vec![];
             for t in threads {
-                let result = t.join()?;
-                acc.add_assign(&result?);
+                results.push(t.join());
+            }
+            for r in results {
+                acc.add_assign(&r??);
             }
 
             acc.add_assign(&cpu_acc.wait().unwrap());

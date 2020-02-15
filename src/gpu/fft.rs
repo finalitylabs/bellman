@@ -1,13 +1,13 @@
 use crate::gpu::{
     error::{GPUError, GPUResult},
-    sources, structs, utils, GPU_NVIDIA_DEVICES,
+    locks, sources, structs, utils, GPU_NVIDIA_DEVICES,
 };
+use crossbeam::thread;
 use ff::Field;
 use log::info;
 use ocl::{Buffer, Device, MemFlags, ProQue};
 use paired::Engine;
 use std::cmp;
-use crossbeam::thread;
 
 // NOTE: Please read `structs.rs` for an explanation for unsafe transmutes of this code!
 
@@ -25,6 +25,7 @@ where
     fft_pq_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
     fft_omg_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
     core_count: usize,
+    _lock: locks::GPULock, // RFC 1857: struct fields are dropped in the same order as they are declared.
 }
 
 impl<E> SingleFFTKernel<E>
@@ -32,6 +33,8 @@ where
     E: Engine,
 {
     pub fn create(d: Device, n: u32) -> GPUResult<SingleFFTKernel<E>> {
+        let lock = locks::GPULock::lock();
+
         let src = sources::kernel::<E>();
         let pq = ProQue::builder().device(d).src(src).dims(n).build()?;
         let core_count = utils::get_core_count(d)?;
@@ -64,6 +67,7 @@ where
             fft_pq_buffer: pqbuff,
             fft_omg_buffer: omgbuff,
             core_count: core_count,
+            _lock: lock,
         })
     }
 
@@ -197,9 +201,7 @@ where
             .map(|res| res.unwrap())
             .collect();
         if kernels.is_empty() {
-            return Err(GPUError {
-                msg: "No working GPUs found!".to_string(),
-            });
+            return Err(GPUError::Simple("No working GPUs found!"));
         }
         info!("FFT: {} working device(s) selected.", kernels.len());
         for (i, k) in kernels.iter().enumerate() {
@@ -209,7 +211,6 @@ where
     }
 
     pub fn radix_fft(&mut self, sets: &mut Vec<(&mut [E::Fr], &E::Fr, u32)>) -> GPUResult<()> {
-
         let num_ffts = sets.len();
         let num_devices = self.kernels.len();
         let chunk_size = ((num_ffts as f64) / (num_devices as f64)).ceil() as usize;
@@ -218,18 +219,13 @@ where
             let mut threads = Vec::new();
 
             if num_ffts > 0 {
-                for (chunk, kern) in sets
-                    .chunks_mut(chunk_size)
-                    .zip(self.kernels.iter_mut())
-                {
-                    threads.push(s.spawn(
-                        move |_| -> Result<(), GPUError> {
-                            for (a, omega, lgn) in chunk.iter_mut() {
-                                kern.radix_fft(a, omega, *lgn)?;
-                            }
-                            Ok(())
-                        },
-                    ));
+                for (chunk, kern) in sets.chunks_mut(chunk_size).zip(self.kernels.iter_mut()) {
+                    threads.push(s.spawn(move |_| -> Result<(), GPUError> {
+                        for (a, omega, lgn) in chunk.iter_mut() {
+                            kern.radix_fft(a, omega, *lgn)?;
+                        }
+                        Ok(())
+                    }));
                 }
             }
 
