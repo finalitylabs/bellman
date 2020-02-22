@@ -8,10 +8,10 @@ use rand_core::RngCore;
 use rayon::prelude::*;
 
 use super::{ParameterSource, Proof};
-use crate::domain::{create_fft_kernel, EvaluationDomain, Scalar};
-use crate::gpu::LockedKernel;
+use crate::domain::{EvaluationDomain, Scalar};
+use crate::gpu::{LockedFFTKernel, LockedMultiexpKernel};
 use crate::multicore::Worker;
-use crate::multiexp::{create_multiexp_kernel, multiexp, DensityTracker, FullDensity};
+use crate::multiexp::{multiexp, DensityTracker, FullDensity};
 use crate::{
     Circuit, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable, BELLMAN_VERSION,
 };
@@ -231,7 +231,7 @@ where
         );
     }
 
-    let mut log_d = 0u32;
+    let mut log_d = 0;
     while (1 << log_d) < n {
         log_d += 1;
     }
@@ -243,7 +243,7 @@ where
         None
     };
 
-    let mut fft_kern = LockedKernel::new(|| create_fft_kernel::<E>(log_d), priority);
+    let mut fft_kern = Some(LockedFFTKernel::<E>::new(log_d, priority));
 
     let abc_s = provers
         .iter_mut()
@@ -254,18 +254,18 @@ where
                 EvaluationDomain::from_coeffs(std::mem::replace(&mut prover.b, Vec::new()))?;
             let mut c =
                 EvaluationDomain::from_coeffs(std::mem::replace(&mut prover.c, Vec::new()))?;
-            a.ifft(&worker, fft_kern.get())?;
-            b.ifft(&worker, fft_kern.get())?;
-            c.ifft(&worker, fft_kern.get())?;
+            a.ifft(&worker, &mut fft_kern)?;
+            b.ifft(&worker, &mut fft_kern)?;
+            c.ifft(&worker, &mut fft_kern)?;
             Ok((a, b, c))
         }).collect::<Result<Vec<_>, SynthesisError>>()?;
 
     let abc_s = abc_s
         .into_iter()
         .map(|(mut a, mut b, mut c)| {
-            a.coset_fft(&worker, fft_kern.get())?;
-            b.coset_fft(&worker, fft_kern.get())?;
-            c.coset_fft(&worker, fft_kern.get())?;
+            a.coset_fft(&worker, &mut fft_kern)?;
+            b.coset_fft(&worker, &mut fft_kern)?;
+            c.coset_fft(&worker, &mut fft_kern)?;
             Ok((a, b, c))
         }).collect::<Result<Vec<_>, SynthesisError>>()?;
 
@@ -277,7 +277,7 @@ where
             a.sub_assign(&worker, &c);
             drop(c);
             a.divide_by_z_on_coset(&worker);
-            a.icoset_fft(&worker, fft_kern.get())?;
+            a.icoset_fft(&worker, &mut fft_kern)?;
             let mut a = a.into_coeffs();
             let a_len = a.len() - 1;
             a.truncate(a_len);
@@ -289,7 +289,7 @@ where
         .collect::<Result<Vec<_>, SynthesisError>>()?;
 
     drop(fft_kern);
-    let mut multiexp_kern = LockedKernel::new(|| create_multiexp_kernel::<E>(), priority);
+    let mut multiexp_kern = Some(LockedMultiexpKernel::<E>::new(log_d, priority));
 
     let h_s = a_s
         .into_iter()
@@ -299,7 +299,7 @@ where
                 params.get_h(a.len())?,
                 FullDensity,
                 a,
-                multiexp_kern.get(),
+                &mut multiexp_kern,
             );
             Ok(h)
         })
@@ -339,7 +339,7 @@ where
                 params.get_l(aux_assignment.len())?,
                 FullDensity,
                 aux_assignment.clone(),
-                multiexp_kern.get(),
+                &mut multiexp_kern,
             );
             Ok(l)
         })
@@ -360,7 +360,7 @@ where
                 a_inputs_source,
                 FullDensity,
                 input_assignment.clone(),
-                multiexp_kern.get(),
+                &mut multiexp_kern,
             );
 
             let a_aux = multiexp(
@@ -368,7 +368,7 @@ where
                 a_aux_source,
                 Arc::new(prover.a_aux_density),
                 aux_assignment.clone(),
-                multiexp_kern.get(),
+                &mut multiexp_kern,
             );
 
             let b_input_density = Arc::new(prover.b_input_density);
@@ -384,14 +384,14 @@ where
                 b_g1_inputs_source,
                 b_input_density.clone(),
                 input_assignment.clone(),
-                multiexp_kern.get(),
+                &mut multiexp_kern,
             );
             let b_g1_aux = multiexp(
                 &worker,
                 b_g1_aux_source,
                 b_aux_density.clone(),
                 aux_assignment.clone(),
-                multiexp_kern.get(),
+                &mut multiexp_kern,
             );
 
             let (b_g2_inputs_source, b_g2_aux_source) =
@@ -402,14 +402,14 @@ where
                 b_g2_inputs_source,
                 b_input_density,
                 input_assignment.clone(),
-                multiexp_kern.get(),
+                &mut multiexp_kern,
             );
             let b_g2_aux = multiexp(
                 &worker,
                 b_g2_aux_source,
                 b_aux_density,
                 aux_assignment.clone(),
-                multiexp_kern.get(),
+                &mut multiexp_kern,
             );
 
             Ok((

@@ -26,13 +26,14 @@ where
     fft_omg_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
     core_count: usize,
     _lock: locks::GPULock, // RFC 1857: struct fields are dropped in the same order as they are declared.
+    priority: bool,
 }
 
 impl<E> SingleFFTKernel<E>
 where
     E: Engine,
 {
-    pub fn create(d: Device, n: u32) -> GPUResult<SingleFFTKernel<E>> {
+    pub fn create(d: Device, n: u32, priority: bool) -> GPUResult<SingleFFTKernel<E>> {
         let lock = locks::GPULock::lock();
 
         let src = sources::kernel::<E>();
@@ -68,6 +69,7 @@ where
             fft_omg_buffer: omgbuff,
             core_count: core_count,
             _lock: lock,
+            priority,
         })
     }
 
@@ -83,7 +85,11 @@ where
         deg: u32,
         max_deg: u32,
         in_src: bool,
-    ) -> ocl::Result<()> {
+    ) -> GPUResult<()> {
+        if locks::PriorityLock::should_break(self.priority) {
+            return Err(GPUError::GPUTaken);
+        }
+
         let n = 1u32 << lgn;
         let lwsd = cmp::min(deg - 1, MAX_LOCAL_WORK_SIZE_DEGREE);
         let kernel = self
@@ -193,10 +199,10 @@ impl<E> FFTKernel<E>
 where
     E: Engine,
 {
-    pub fn create(n: u32) -> GPUResult<FFTKernel<E>> {
+    pub fn create(n: u32, priority: bool) -> GPUResult<FFTKernel<E>> {
         let kernels: Vec<_> = GPU_NVIDIA_DEVICES
             .iter()
-            .map(|d| SingleFFTKernel::<E>::create(*d, n))
+            .map(|d| SingleFFTKernel::<E>::create(*d, n, priority))
             .filter(|res| res.is_ok())
             .map(|res| res.unwrap())
             .collect();
