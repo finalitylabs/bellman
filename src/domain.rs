@@ -93,24 +93,25 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
         Ok(())
     }
 
+    pub fn mul_all(&mut self, worker: &Worker, val: E::Fr) {
+        worker.scope(self.coeffs.len(), |scope, chunk| {
+            for v in self.coeffs.chunks_mut(chunk) {
+                scope.spawn(move |_| {
+                    for v in v {
+                        v.group_mul_assign(&val);
+                    }
+                });
+            }
+        });
+    }
+
     pub fn ifft(
         &mut self,
         worker: &Worker,
         kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
         best_fft(kern, &mut self.coeffs, worker, &self.omegainv, self.exp)?;
-
-        worker.scope(self.coeffs.len(), |scope, chunk| {
-            let minv = self.minv;
-
-            for v in self.coeffs.chunks_mut(chunk) {
-                scope.spawn(move |_| {
-                    for v in v {
-                        v.group_mul_assign(&minv);
-                    }
-                });
-            }
-        });
+        self.mul_all(worker, self.minv);
 
         Ok(())
     }
@@ -167,16 +168,7 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
             .z(&E::Fr::multiplicative_generator())
             .inverse()
             .unwrap();
-
-        worker.scope(self.coeffs.len(), |scope, chunk| {
-            for v in self.coeffs.chunks_mut(chunk) {
-                scope.spawn(move |_| {
-                    for v in v {
-                        v.group_mul_assign(&i);
-                    }
-                });
-            }
-        });
+        self.mul_all(worker, i);
     }
 
     /// Perform O(n) multiplication of two polynomials in the domain.
