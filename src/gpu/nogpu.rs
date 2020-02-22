@@ -19,7 +19,7 @@ where
         return Err(GPUError::Simple("GPU accelerator is not enabled!"));
     }
 
-    pub fn radix_fft(&mut self, _: &mut Vec<(&mut [E::Fr], &E::Fr, u32)>) -> GPUResult<()> {
+    pub fn radix_fft(&mut self, _: &mut Vec<&mut [E::Fr]>, _: &E::Fr, _: u32) -> GPUResult<()> {
         return Err(GPUError::Simple("GPU accelerator is not enabled!"));
     }
 }

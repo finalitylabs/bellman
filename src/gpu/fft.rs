@@ -213,7 +213,12 @@ where
         return Ok(FFTKernel::<E> { kernels });
     }
 
-    pub fn radix_fft(&mut self, sets: &mut Vec<(&mut [E::Fr], &E::Fr, u32)>) -> GPUResult<()> {
+    pub fn radix_fft(
+        &mut self,
+        sets: &mut Vec<&mut [E::Fr]>,
+        omega: &E::Fr,
+        lgn: u32,
+    ) -> GPUResult<()> {
         let num_ffts = sets.len();
         let num_devices = self.kernels.len();
         let chunk_size = ((num_ffts as f64) / (num_devices as f64)).ceil() as usize;
@@ -224,8 +229,8 @@ where
             if num_ffts > 0 {
                 for (chunk, kern) in sets.chunks_mut(chunk_size).zip(self.kernels.iter_mut()) {
                     threads.push(s.spawn(move |_| -> Result<(), GPUError> {
-                        for (a, omega, lgn) in chunk.iter_mut() {
-                            kern.radix_fft(a, omega, *lgn)?;
+                        for a in chunk.iter_mut() {
+                            kern.radix_fft(a, omega, lgn)?;
                         }
                         Ok(())
                     }));
