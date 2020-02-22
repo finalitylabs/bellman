@@ -24,7 +24,6 @@ where
     fft_dst_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
     fft_pq_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
     fft_omg_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
-    core_count: usize,
     _lock: locks::GPULock, // RFC 1857: struct fields are dropped in the same order as they are declared.
     priority: bool,
 }
@@ -38,7 +37,6 @@ where
 
         let src = sources::kernel::<E>();
         let pq = ProQue::builder().device(d).src(src).dims(n).build()?;
-        let core_count = utils::get_core_count(d)?;
 
         let srcbuff = Buffer::builder()
             .queue(pq.queue().clone())
@@ -67,7 +65,6 @@ where
             fft_dst_buffer: dstbuff,
             fft_pq_buffer: pqbuff,
             fft_omg_buffer: omgbuff,
-            core_count: core_count,
             _lock: lock,
             priority,
         })
