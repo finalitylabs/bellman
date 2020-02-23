@@ -100,20 +100,19 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
     }
 
     pub fn triple_fft(
-        a: &mut EvaluationDomain<E, G>,
+        &mut self,
         b: &mut EvaluationDomain<E, G>,
         c: &mut EvaluationDomain<E, G>,
-        omega: &E::Fr,
-        exp: u32,
+        omega: E::Fr,
         worker: &Worker,
         kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
         best_fft(
             kern,
-            &mut vec![&mut a.coeffs, &mut b.coeffs, &mut c.coeffs],
+            &mut vec![&mut self.coeffs, &mut b.coeffs, &mut c.coeffs],
             worker,
-            omega,
-            exp,
+            &omega,
+            self.exp,
         )?;
 
         Ok(())
@@ -148,6 +147,19 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
         Ok(())
     }
 
+    pub fn triple_ifft(
+        &mut self,
+        b: &mut EvaluationDomain<E, G>,
+        c: &mut EvaluationDomain<E, G>,
+        worker: &Worker,
+        kern: &mut Option<gpu::LockedFFTKernel<E>>,
+    ) -> gpu::GPUResult<()> {
+        self.triple_fft(b, c, self.omegainv, worker, kern)?;
+        self.mul_all(worker, self.minv);
+
+        Ok(())
+    }
+
     pub fn distribute_powers(&mut self, worker: &Worker, g: E::Fr) {
         worker.scope(self.coeffs.len(), |scope, chunk| {
             for (i, v) in self.coeffs.chunks_mut(chunk).enumerate() {
@@ -169,6 +181,19 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
     ) -> gpu::GPUResult<()> {
         self.distribute_powers(worker, E::Fr::multiplicative_generator());
         self.fft(worker, kern)?;
+        Ok(())
+    }
+
+    pub fn triple_coset_fft(
+        &mut self,
+        b: &mut EvaluationDomain<E, G>,
+        c: &mut EvaluationDomain<E, G>,
+        worker: &Worker,
+        kern: &mut Option<gpu::LockedFFTKernel<E>>,
+    ) -> gpu::GPUResult<()> {
+        self.distribute_powers(worker, E::Fr::multiplicative_generator());
+        self.triple_fft(b, c, self.omega, worker, kern)?;
+
         Ok(())
     }
 
