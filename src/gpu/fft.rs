@@ -215,7 +215,7 @@ where
 
     pub fn radix_fft(
         &mut self,
-        mut sets: Vec<&mut [E::Fr]>,
+        sets: &mut Vec<&mut [E::Fr]>,
         omega: &E::Fr,
         lgn: u32,
     ) -> GPUResult<()> {

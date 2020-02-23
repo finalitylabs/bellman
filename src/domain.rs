@@ -89,7 +89,7 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
         worker: &Worker,
         kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
-        best_fft(kern, &mut self.coeffs, worker, &self.omega, self.exp)?;
+        best_fft(kern, &mut vec![&mut self.coeffs], worker, &self.omega, self.exp)?;
         Ok(())
     }
 
@@ -110,7 +110,7 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
         worker: &Worker,
         kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
-        best_fft(kern, &mut self.coeffs, worker, &self.omegainv, self.exp)?;
+        best_fft(kern, &mut vec![&mut self.coeffs], worker, &self.omegainv, self.exp)?;
         self.mul_all(worker, self.minv);
 
         Ok(())
@@ -281,25 +281,27 @@ impl<E: ScalarEngine> Group<E> for Scalar<E> {
 
 fn best_fft<E: Engine, T: Group<E>>(
     kern: &mut Option<gpu::LockedFFTKernel<E>>,
-    a: &mut [T],
+    sets: &mut Vec<&mut [T]>,
     worker: &Worker,
     omega: &E::Fr,
     log_n: u32,
 ) -> gpu::GPUResult<()> {
     if let Some(ref mut kern) = kern {
         if kern
-            .with(|k: &mut gpu::FFTKernel<E>| gpu_fft(k, vec![a], omega, log_n))
+            .with(|k: &mut gpu::FFTKernel<E>| gpu_fft(k, sets, omega, log_n))
             .is_ok()
         {
             return Ok(());
         }
     }
 
-    let log_cpus = worker.log_num_cpus();
-    if log_n <= log_cpus {
-        serial_fft(a, omega, log_n);
-    } else {
-        parallel_fft(a, worker, omega, log_n, log_cpus);
+    for a in sets.iter_mut() {
+        let log_cpus = worker.log_num_cpus();
+        if log_n <= log_cpus {
+            serial_fft(a, omega, log_n);
+        } else {
+            parallel_fft(a, worker, omega, log_n, log_cpus);
+        }
     }
 
     Ok(())
@@ -307,7 +309,7 @@ fn best_fft<E: Engine, T: Group<E>>(
 
 pub fn gpu_fft<E: Engine, T: Group<E>>(
     kern: &mut gpu::FFTKernel<E>,
-    mut a: Vec<&mut [T]>,
+    a: &mut Vec<&mut [T]>,
     omega: &E::Fr,
     log_n: u32,
 ) -> gpu::GPUResult<()> {
@@ -318,11 +320,11 @@ pub fn gpu_fft<E: Engine, T: Group<E>>(
     // size.
     // For compatibility/performance reasons we decided to transmute the array to the desired type
     // as it seems safe and needs less modifications in the current structure of Bellman library.
-    let v = a
+    let mut v = a
         .iter_mut()
         .map(|a| unsafe { std::mem::transmute::<&mut [T], &mut [E::Fr]>(a) })
         .collect();
-    kern.radix_fft(v, omega, log_n)?;
+    kern.radix_fft(&mut v, omega, log_n)?;
     Ok(())
 }
 
@@ -593,7 +595,7 @@ pub fn gpu_fft_consistency() {
         println!("Testing FFT for {} elements...", d);
 
         let mut now = Instant::now();
-        gpu_fft(&mut kern, vec![&mut v1.coeffs], &v1.omega, log_d).expect("GPU FFT failed!");
+        gpu_fft(&mut kern, &mut vec![&mut v1.coeffs], &v1.omega, log_d).expect("GPU FFT failed!");
         let gpu_dur = now.elapsed().as_secs() * 1000 as u64 + now.elapsed().subsec_millis() as u64;
         println!("GPU took {}ms.", gpu_dur);
 
