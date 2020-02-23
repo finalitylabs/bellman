@@ -24,7 +24,6 @@ where
     fft_dst_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
     fft_pq_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
     fft_omg_buffer: Buffer<structs::PrimeFieldStruct<E::Fr>>,
-    _lock: locks::GPULock, // RFC 1857: struct fields are dropped in the same order as they are declared.
     priority: bool,
 }
 
@@ -33,8 +32,6 @@ where
     E: Engine,
 {
     pub fn create(d: Device, n: u32, priority: bool) -> GPUResult<SingleFFTKernel<E>> {
-        let lock = locks::GPULock::lock();
-
         let src = sources::kernel::<E>();
         let pq = ProQue::builder().device(d).src(src).dims(n).build()?;
 
@@ -65,7 +62,6 @@ where
             fft_dst_buffer: dstbuff,
             fft_pq_buffer: pqbuff,
             fft_omg_buffer: omgbuff,
-            _lock: lock,
             priority,
         })
     }
@@ -190,6 +186,7 @@ where
     E: Engine,
 {
     kernels: Vec<SingleFFTKernel<E>>,
+    _lock: locks::GPULock, // RFC 1857: struct fields are dropped in the same order as they are declared.
 }
 
 impl<E> FFTKernel<E>
@@ -197,6 +194,8 @@ where
     E: Engine,
 {
     pub fn create(n: u32, priority: bool) -> GPUResult<FFTKernel<E>> {
+        let lock = locks::GPULock::lock();
+
         let kernels: Vec<_> = GPU_NVIDIA_DEVICES
             .iter()
             .map(|d| SingleFFTKernel::<E>::create(*d, n, priority))
@@ -210,7 +209,10 @@ where
         for (i, k) in kernels.iter().enumerate() {
             info!("FFT: Device {}: {}", i, k.proque.device().name()?,);
         }
-        return Ok(FFTKernel::<E> { kernels });
+        return Ok(FFTKernel::<E> {
+            kernels,
+            _lock: lock,
+        });
     }
 
     pub fn radix_fft(

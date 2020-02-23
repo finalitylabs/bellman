@@ -635,7 +635,7 @@ pub fn gpu_fft_consistency() {
     use paired::bls12_381::{Bls12, Fr};
     use std::time::Instant;
     let rng = &mut rand::thread_rng();
-    
+
     env_logger::init();
     let worker = Worker::new();
     let log_cpus = worker.log_num_cpus();
