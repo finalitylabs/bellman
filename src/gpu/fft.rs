@@ -1,6 +1,6 @@
 use crate::gpu::{
     error::{GPUError, GPUResult},
-    locks, sources, structs, utils, GPU_NVIDIA_DEVICES,
+    locks, sources, structs, GPU_NVIDIA_DEVICES,
 };
 use crossbeam::thread;
 use ff::Field;
