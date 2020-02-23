@@ -215,7 +215,7 @@ where
 
     pub fn radix_fft(
         &mut self,
-        sets: &mut Vec<&mut [E::Fr]>,
+        mut sets: Vec<&mut [E::Fr]>,
         omega: &E::Fr,
         lgn: u32,
     ) -> GPUResult<()> {
@@ -229,7 +229,7 @@ where
             if num_ffts > 0 {
                 for (chunk, kern) in sets.chunks_mut(chunk_size).zip(self.kernels.iter_mut()) {
                     threads.push(s.spawn(move |_| -> Result<(), GPUError> {
-                        for a in chunk.iter_mut() {
+                        for a in chunk {
                             kern.radix_fft(a, omega, lgn)?;
                         }
                         Ok(())
