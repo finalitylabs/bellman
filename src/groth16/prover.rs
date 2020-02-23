@@ -255,9 +255,9 @@ where
             let mut c =
                 EvaluationDomain::from_coeffs(std::mem::replace(&mut prover.c, Vec::new()))?;
 
-            a.triple_ifft(&mut b, &mut c, &worker, &mut fft_kern);
-            a.triple_coset_fft(&mut b, &mut c, &worker, &mut fft_kern);
-            
+            a.triple_ifft(&mut b, &mut c, &worker, &mut fft_kern)?;
+            a.triple_coset_fft(&mut b, &mut c, &worker, &mut fft_kern)?;
+
             a.mul_assign(&worker, &b);
             drop(b);
             a.sub_assign(&worker, &c);
