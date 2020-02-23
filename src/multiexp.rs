@@ -379,6 +379,8 @@ where
 #[cfg(feature = "gpu")]
 #[test]
 pub fn gpu_multiexp_consistency() {
+    env_logger::init();
+
     use paired::bls12_381::Bls12;
     use std::time::Instant;
 
