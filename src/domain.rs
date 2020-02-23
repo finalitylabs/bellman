@@ -288,7 +288,7 @@ fn best_fft<E: Engine, T: Group<E>>(
 ) -> gpu::GPUResult<()> {
     if let Some(ref mut kern) = kern {
         if kern
-            .with(|k: &mut gpu::FFTKernel<E>| gpu_fft(k, a, omega, log_n))
+            .with(|k: &mut gpu::FFTKernel<E>| gpu_fft(k, vec![a], omega, log_n))
             .is_ok()
         {
             return Ok(());
@@ -307,7 +307,7 @@ fn best_fft<E: Engine, T: Group<E>>(
 
 pub fn gpu_fft<E: Engine, T: Group<E>>(
     kern: &mut gpu::FFTKernel<E>,
-    a: &mut [T],
+    mut a: Vec<&mut [T]>,
     omega: &E::Fr,
     log_n: u32,
 ) -> gpu::GPUResult<()> {
@@ -318,8 +318,10 @@ pub fn gpu_fft<E: Engine, T: Group<E>>(
     // size.
     // For compatibility/performance reasons we decided to transmute the array to the desired type
     // as it seems safe and needs less modifications in the current structure of Bellman library.
-    let a = unsafe { std::mem::transmute::<&mut [T], &mut [E::Fr]>(a) };
-    let v = vec![a];
+    let v = a
+        .iter_mut()
+        .map(|a| unsafe { std::mem::transmute::<&mut [T], &mut [E::Fr]>(a) })
+        .collect();
     kern.radix_fft(v, omega, log_n)?;
     Ok(())
 }
@@ -591,7 +593,7 @@ pub fn gpu_fft_consistency() {
         println!("Testing FFT for {} elements...", d);
 
         let mut now = Instant::now();
-        gpu_fft(&mut kern, &mut v1.coeffs, &v1.omega, log_d).expect("GPU FFT failed!");
+        gpu_fft(&mut kern, vec![&mut v1.coeffs], &v1.omega, log_d).expect("GPU FFT failed!");
         let gpu_dur = now.elapsed().as_secs() * 1000 as u64 + now.elapsed().subsec_millis() as u64;
         println!("GPU took {}ms.", gpu_dur);
 
