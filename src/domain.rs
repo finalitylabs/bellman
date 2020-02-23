@@ -99,6 +99,26 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
         Ok(())
     }
 
+    pub fn triple_fft(
+        a: &mut EvaluationDomain<E, G>,
+        b: &mut EvaluationDomain<E, G>,
+        c: &mut EvaluationDomain<E, G>,
+        omega: &E::Fr,
+        exp: u32,
+        worker: &Worker,
+        kern: &mut Option<gpu::LockedFFTKernel<E>>,
+    ) -> gpu::GPUResult<()> {
+        best_fft(
+            kern,
+            &mut vec![&mut a.coeffs, &mut b.coeffs, &mut c.coeffs],
+            worker,
+            omega,
+            exp,
+        )?;
+
+        Ok(())
+    }
+
     pub fn mul_all(&mut self, worker: &Worker, val: E::Fr) {
         worker.scope(self.coeffs.len(), |scope, chunk| {
             for v in self.coeffs.chunks_mut(chunk) {
