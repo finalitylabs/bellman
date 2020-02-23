@@ -99,7 +99,7 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
         Ok(())
     }
 
-    pub fn triple_fft(
+    fn triple_fft(
         &mut self,
         b: &mut EvaluationDomain<E, G>,
         c: &mut EvaluationDomain<E, G>,
