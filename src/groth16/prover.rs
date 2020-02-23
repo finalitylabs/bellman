@@ -258,7 +258,8 @@ where
             b.ifft(&worker, &mut fft_kern)?;
             c.ifft(&worker, &mut fft_kern)?;
             Ok((a, b, c))
-        }).collect::<Result<Vec<_>, SynthesisError>>()?;
+        })
+        .collect::<Result<Vec<_>, SynthesisError>>()?;
 
     let abc_s = abc_s
         .into_iter()
@@ -267,7 +268,8 @@ where
             b.coset_fft(&worker, &mut fft_kern)?;
             c.coset_fft(&worker, &mut fft_kern)?;
             Ok((a, b, c))
-        }).collect::<Result<Vec<_>, SynthesisError>>()?;
+        })
+        .collect::<Result<Vec<_>, SynthesisError>>()?;
 
     let a_s = abc_s
         .into_iter()

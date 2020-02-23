@@ -89,7 +89,13 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
         worker: &Worker,
         kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
-        best_fft(kern, &mut vec![&mut self.coeffs], worker, &self.omega, self.exp)?;
+        best_fft(
+            kern,
+            &mut vec![&mut self.coeffs],
+            worker,
+            &self.omega,
+            self.exp,
+        )?;
         Ok(())
     }
 
@@ -110,7 +116,13 @@ impl<E: Engine, G: Group<E>> EvaluationDomain<E, G> {
         worker: &Worker,
         kern: &mut Option<gpu::LockedFFTKernel<E>>,
     ) -> gpu::GPUResult<()> {
-        best_fft(kern, &mut vec![&mut self.coeffs], worker, &self.omegainv, self.exp)?;
+        best_fft(
+            kern,
+            &mut vec![&mut self.coeffs],
+            worker,
+            &self.omegainv,
+            self.exp,
+        )?;
         self.mul_all(worker, self.minv);
 
         Ok(())
