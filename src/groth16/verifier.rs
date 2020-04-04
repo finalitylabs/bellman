@@ -5,6 +5,7 @@ use rayon::prelude::*;
 
 use super::{BatchPreparedVerifyingKey, PreparedVerifyingKey, Proof, VerifyingKey};
 use crate::SynthesisError;
+use crate::multicore::Worker;
 
 pub fn prepare_verifying_key<E: Engine>(vk: &VerifyingKey<E>) -> PreparedVerifyingKey<E> {
     let mut gamma = vk.gamma_g2;
@@ -65,7 +66,7 @@ pub fn verify_proof<'a, E: Engine>(
     .unwrap()
         == pvk.alpha_g1_beta_g2)
 }
-
+use std::time::{Duration, Instant};
 /// Randomized batch verification - see Appendix B.2 in Zcash spec
 pub fn verify_proofs_batch<'a, E: Engine, R: rand::RngCore>(
     pvk: &'a BatchPreparedVerifyingKey<E>,
@@ -76,6 +77,7 @@ pub fn verify_proofs_batch<'a, E: Engine, R: rand::RngCore>(
 where
     <<E as ff::ScalarEngine>::Fr as ff::PrimeField>::Repr: From<<E as ff::ScalarEngine>::Fr>,
 {
+    let w = Worker::new();
     for pub_input in public_inputs {
         if (pub_input.len() + 1) != pvk.ic.len() {
             return Err(SynthesisError::MalformedVerifyingKey);
@@ -86,6 +88,7 @@ where
     let proof_num = proofs.len();
 
     // choose random coefficients for combining the proofs
+    let now = Instant::now();
     let mut r: Vec<E::Fr> = Vec::with_capacity(proof_num);
     for _ in 0..proof_num {
         use rand::Rng;
@@ -99,7 +102,13 @@ where
 
         r.push(E::Fr::from_repr(el).unwrap());
     }
+    println!(
+        "A finished in {}s and {}ms.",
+        now.elapsed().as_secs(),
+        now.elapsed().subsec_nanos() / 1000000,
+    );
 
+    let now = Instant::now();
     let mut sum_r = E::Fr::zero();
     for i in r.iter() {
         sum_r.add_assign(i);
@@ -119,14 +128,44 @@ where
             pi
         })
         .collect();
+    println!(
+        "B finished in {}s and {}ms.",
+        now.elapsed().as_secs(),
+        now.elapsed().subsec_nanos() / 1000000,
+    );
+
+    println!("Pi num {}",pi_num);
 
     // create group element corresponding to public input combination
     // This roughly corresponds to Accum_Gamma in spec
-    let mut acc_pi = pvk.ic[0].mul(sum_r.into_repr());
-    for (i, b) in pi_scalars.iter().zip(pvk.ic.iter().skip(1)) {
-        acc_pi.add_assign(&b.mul(i.into_repr()));
-    }
 
+    let mut acc_pi = pvk.ic[0].mul(sum_r.into_repr());
+    let skipped_ic = &pvk.ic[1..];
+    w.scope(pi_num, |scope, chunk| {
+        let mut acc = E::G1::zero();
+        for (i_s, b_s) in pi_scalars.chunks(chunk).zip(skipped_ic.chunks(chunk)) {
+            scope.spawn(move |_| {
+                for (i, b) in i_s.iter().zip(b_s.iter()) {
+                    acc.add_assign(&b.mul(i.into_repr()));
+                }
+            });
+        }
+        acc_pi.add_assign(&acc);
+    });
+
+
+    //let mut acc_pi = pvk.ic[0].mul(sum_r.into_repr());
+    //for (i, b) in pi_scalars.iter().zip(pvk.ic.iter().skip(1)) {
+    //    acc_pi.add_assign(&b.mul(i.into_repr()));
+    //}
+    println!(
+        "C finished in {}s and {}ms.",
+        now.elapsed().as_secs(),
+        now.elapsed().subsec_nanos() / 1000000,
+    );
+
+
+    let now = Instant::now();
     // This corresponds to Accum_Y
     // -Accum_Y
     sum_r.negate();
@@ -140,7 +179,13 @@ where
         tmp.mul_assign(*rand_coeff);
         acc_c.add_assign(&tmp);
     }
+    println!(
+        "D finished in {}s and {}ms.",
+        now.elapsed().as_secs(),
+        now.elapsed().subsec_nanos() / 1000000,
+    );
 
+    let now = Instant::now();
     // This corresponds to Accum_AB
     let ml = r
         .par_iter()
@@ -159,6 +204,13 @@ where
             (g1, g2)
         })
         .collect::<Vec<_>>();
+        println!(
+            "E finished in {}s and {}ms.",
+            now.elapsed().as_secs(),
+            now.elapsed().subsec_nanos() / 1000000,
+        );
+
+    let now = Instant::now();
     let mut parts = ml.iter().map(|(a, b)| (a, b)).collect::<Vec<_>>();
 
     // MillerLoop(Accum_Delta)
@@ -169,6 +221,25 @@ where
     let acc_pi_prepared = acc_pi.into_affine().prepare();
     parts.push((&acc_pi_prepared, &pvk.gamma_g2));
 
+    println!(
+        "F finished in {}s and {}ms.",
+        now.elapsed().as_secs(),
+        now.elapsed().subsec_nanos() / 1000000,
+    );
+
+    let now = Instant::now();
     let res = E::miller_loop(&parts);
-    Ok(E::final_exponentiation(&res).unwrap() == acc_y)
+    println!(
+        "Miller loop finished in {}s and {}ms.",
+        now.elapsed().as_secs(),
+        now.elapsed().subsec_nanos() / 1000000,
+    );
+    let now = Instant::now();
+    let fe = E::final_exponentiation(&res).unwrap();
+    println!(
+        "Final exp finished in {}s and {}ms.",
+        now.elapsed().as_secs(),
+        now.elapsed().subsec_nanos() / 1000000,
+    );
+    Ok(fe == acc_y)
 }
