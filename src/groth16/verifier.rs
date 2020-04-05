@@ -114,6 +114,29 @@ where
         sum_r.add_assign(i);
     }
 
+    w.scope(pi_num, |scope, chunk| {
+        let mut results = Vec::new();
+        let inds = (0..pi_num).collect::<Vec<_>>();
+        for chunk in inds.chunks(chunk) {
+            results.push(scope.spawn(move |_| {
+                chunk
+                    .iter()
+                    .map(|i| {
+                        let mut pi = E::Fr::zero();
+                        for j in 0..proof_num {
+                            // z_j * a_j,i
+                            let mut tmp = r[j];
+                            tmp.mul_assign(&public_inputs[j][*i]);
+                            pi.add_assign(&tmp);
+                        }
+                        pi
+                    })
+                    .collect::<Vec<_>>()
+            }));
+        }
+        for result in results {}
+    });
+
     // create corresponding scalars for public input vk elements
     let pi_scalars: Vec<_> = (0..pi_num)
         .into_par_iter()
