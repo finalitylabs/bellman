@@ -34,7 +34,7 @@ impl<E: Engine> Circuit<E> for DummyDemo<E> {
         let mut x_val = E::Fr::from_str("2");
         let mut x = cs.alloc_input(|| "", || x_val.ok_or(SynthesisError::AssignmentMissing))?;
 
-        for k in 0..100000 {
+        for k in 0..100 {
             // Allocate: x * x = x2
             let x2_val = x_val.map(|mut e| {
                 e.square();

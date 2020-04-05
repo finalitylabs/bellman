@@ -189,15 +189,18 @@ where
     E: Engine,
     C: Circuit<E> + Send,
 {
-    let rng = &mut rand::thread_rng();
+    /*let rng = &mut rand::thread_rng();
     let rnd1 = E::G1::random(rng).into_affine();
     let rnd2 = E::G2::random(rng).into_affine();
     let rnd3 = E::G1::random(rng).into_affine();
-    return Ok(vec![Proof {
-        a: rnd1,
-        b: rnd2,
-        c: rnd3,
-    };circuits.len()]);
+    return Ok(vec![
+        Proof {
+            a: rnd1,
+            b: rnd2,
+            c: rnd3,
+        };
+        circuits.len()
+    ]);*/
 
     info!("Bellperson {} is being used!", BELLMAN_VERSION);
 

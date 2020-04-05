@@ -4,8 +4,8 @@ use paired::{Engine, PairingCurveAffine};
 use rayon::prelude::*;
 
 use super::{BatchPreparedVerifyingKey, PreparedVerifyingKey, Proof, VerifyingKey};
-use crate::SynthesisError;
 use crate::multicore::Worker;
+use crate::SynthesisError;
 
 pub fn prepare_verifying_key<E: Engine>(vk: &VerifyingKey<E>) -> PreparedVerifyingKey<E> {
     let mut gamma = vk.gamma_g2;
@@ -134,7 +134,7 @@ where
         now.elapsed().subsec_nanos() / 1000000,
     );
 
-    println!("Pi num {}",pi_num);
+    println!("Pi num {}", pi_num);
 
     // create group element corresponding to public input combination
     // This roughly corresponds to Accum_Gamma in spec
@@ -142,28 +142,30 @@ where
     let mut acc_pi = pvk.ic[0].mul(sum_r.into_repr());
     let skipped_ic = &pvk.ic[1..];
     w.scope(pi_num, |scope, chunk| {
-        let mut acc = E::G1::zero();
+        let mut results = Vec::new();
         for (i_s, b_s) in pi_scalars.chunks(chunk).zip(skipped_ic.chunks(chunk)) {
-            scope.spawn(move |_| {
+            results.push(scope.spawn(move |_| {
+                let mut acc = E::G1::zero();
                 for (i, b) in i_s.iter().zip(b_s.iter()) {
                     acc.add_assign(&b.mul(i.into_repr()));
                 }
-            });
+                acc
+            }));
         }
-        acc_pi.add_assign(&acc);
+        for result in results {
+            acc_pi.add_assign(&result.join().unwrap());
+        }
     });
 
-
-    //let mut acc_pi = pvk.ic[0].mul(sum_r.into_repr());
-    //for (i, b) in pi_scalars.iter().zip(pvk.ic.iter().skip(1)) {
-    //    acc_pi.add_assign(&b.mul(i.into_repr()));
-    //}
+    /*let mut acc_pi = pvk.ic[0].mul(sum_r.into_repr());
+    for (i, b) in pi_scalars.iter().zip(pvk.ic.iter().skip(1)) {
+        acc_pi.add_assign(&b.mul(i.into_repr()));
+    }*/
     println!(
         "C finished in {}s and {}ms.",
         now.elapsed().as_secs(),
         now.elapsed().subsec_nanos() / 1000000,
     );
-
 
     let now = Instant::now();
     // This corresponds to Accum_Y
@@ -204,11 +206,11 @@ where
             (g1, g2)
         })
         .collect::<Vec<_>>();
-        println!(
-            "E finished in {}s and {}ms.",
-            now.elapsed().as_secs(),
-            now.elapsed().subsec_nanos() / 1000000,
-        );
+    println!(
+        "E finished in {}s and {}ms.",
+        now.elapsed().as_secs(),
+        now.elapsed().subsec_nanos() / 1000000,
+    );
 
     let now = Instant::now();
     let mut parts = ml.iter().map(|(a, b)| (a, b)).collect::<Vec<_>>();

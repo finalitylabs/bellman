@@ -34,7 +34,7 @@ fn main() {
 
     println!("Creating parameters...");
 
-    let load_parameters = true;
+    let load_parameters = false;
     let parameters_path = "parameters.dat";
 
     // Create parameters for our circuit
@@ -64,12 +64,20 @@ fn main() {
     const SAMPLES: usize = 500;
     println!("Batch proof");
 
-
     let proofs = create_random_proof_batch(vec![c; SAMPLES], &params, rng).unwrap();
     let pref = proofs.iter().collect::<Vec<&_>>();
     println!("Verifying...");
     let now = Instant::now();
-    println!("{}", verify_proofs_batch(&pvk, rng, &pref[..], &vec![vec![Fr::from_str("2").unwrap();100001];500]).unwrap());
+    let mut haha = vec![Fr::from_str("2").unwrap()];
+    for i in 0..100 {
+        haha.push(haha[i]);
+        let cop = haha[i];
+        haha[i + 1].mul_assign(&cop);
+    }
+    println!(
+        "{}",
+        verify_proofs_batch(&pvk, rng, &pref[..], &vec![haha.clone(); 500]).unwrap()
+    );
     println!(
         "Verification finished in {}s and {}ms for {} proofs",
         now.elapsed().as_secs(),
