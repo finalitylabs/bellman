@@ -143,7 +143,7 @@ where
 
     // create group element corresponding to public input combination
     // This roughly corresponds to Accum_Gamma in spec
-
+    let now = Instant::now();
     let mut acc_pi = pvk.ic[0].mul(sum_r.into_repr());
     let log_d = (pi_num as f32).log2().ceil() as usize;
     let mut multiexp_kern = Some(LockedMultiexpKernel::<E>::new(log_d, true));
@@ -157,6 +157,11 @@ where
         )
         .wait()
         .unwrap(),
+    );
+    println!(
+        "C finished in {}s and {}ms.",
+        now.elapsed().as_secs(),
+        now.elapsed().subsec_nanos() / 1000000,
     );
 
     let now = Instant::now();

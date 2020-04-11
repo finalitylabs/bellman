@@ -61,27 +61,30 @@ fn main() {
         xx: Fr::from_str("3"),
     };
 
-    const SAMPLES: usize = 500;
+    const SAMPLES: usize = 5;
     println!("Batch proof");
 
     let proofs = create_random_proof_batch(vec![c; SAMPLES], &params, rng).unwrap();
     let pref = proofs.iter().collect::<Vec<&_>>();
     println!("Verifying...");
-    let now = Instant::now();
+
     let mut haha = vec![Fr::from_str("2").unwrap()];
-    for i in 0..100 {
+    for i in 0..100000 {
         haha.push(haha[i]);
         let cop = haha[i];
         haha[i + 1].mul_assign(&cop);
     }
-    println!(
-        "{}",
-        verify_proofs_batch(&pvk, rng, &pref[..], &vec![haha.clone(); 500]).unwrap()
-    );
-    println!(
-        "Verification finished in {}s and {}ms for {} proofs",
-        now.elapsed().as_secs(),
-        now.elapsed().subsec_nanos() / 1000000,
-        SAMPLES
-    );
+    loop {
+        let now = Instant::now();
+        println!(
+            "{}",
+            verify_proofs_batch(&pvk, rng, &pref[..], &vec![haha.clone(); SAMPLES]).unwrap()
+        );
+        println!(
+            "Verification finished in {}s and {}ms for {} proofs",
+            now.elapsed().as_secs(),
+            now.elapsed().subsec_nanos() / 1000000,
+            SAMPLES
+        );
+    }
 }
